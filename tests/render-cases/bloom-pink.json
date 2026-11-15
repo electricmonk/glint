@@ -1,0 +1,3 @@
+{ "sampleRate": 48000, "seconds": 20, "seed": 1,
+  "input": { "type": "pink", "level": -12, "seconds": 3 },
+  "macros": { "mix": 1, "bloom": 1.1 } }

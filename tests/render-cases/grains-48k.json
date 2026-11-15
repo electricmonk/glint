@@ -1,0 +1,3 @@
+{ "sampleRate": 48000, "seconds": 12, "seed": 1,
+  "input": { "type": "pink", "level": -12, "seconds": 4 },
+  "engine": { "mix": 1, "reverbLevelDb": -120, "grainRateHz": 15, "time": 0.05, "sizeMs": 250, "spread": 0.8 } }

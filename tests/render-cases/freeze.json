@@ -1,0 +1,4 @@
+{ "sampleRate": 48000, "seconds": 14, "seed": 1,
+  "input": { "type": "sine", "freq": 330, "level": -12, "seconds": 4 },
+  "macros": { "mix": 0.6 },
+  "events": [ { "t": 3.5, "macros": { "freeze": true } }, { "t": 11, "macros": { "freeze": false } } ] }

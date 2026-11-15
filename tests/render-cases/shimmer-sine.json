@@ -1,0 +1,3 @@
+{ "sampleRate": 48000, "seconds": 16, "seed": 1,
+  "input": { "type": "sine", "freq": 440, "level": -12, "seconds": 2 },
+  "macros": { "mix": 1, "bloom": 0.85, "shimmer": "octave", "space": 0.7 } }
