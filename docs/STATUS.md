@@ -15,6 +15,37 @@ below are still needed from Shai.
 | 6 Presets/polish | Done | phase-4-6-plugin | 20 presets (5 from mockup + 15), all render finite, peaks −1.8 to −4.3 dBFS on a plucked phrase; CPU at 48 kHz/256: 0.81 % of one M4 Pro core (default), 0.85 % max density, 0.89 % Bloom 110 %; 96 kHz 1.6 %, 192 kHz 3.2 % |
 | 7 Distribution | Blocked on Shai | — | Unsigned .pkg builds (`scripts/sign-notarize.sh`); needs a Developer ID Application + Installer certificate and a notarytool profile (only an Apple Development identity is installed) |
 
+## Shimmer v2, switches and Direction (2026-11-15, branch shimmer-v2)
+
+Shai: the shimmer didn't sound nice and Bloom 50% on piano was almost
+unusable; asked for Shimmer/Grains on-off switches and grain direction.
+
+- **Pitch shifter replaced** (two-tap delay line → phase vocoder with
+  peak-region phase locking). On a 440 Hz tone at Bloom 50%, non-tonal
+  energy in the tail went from −4.0 dB to −8.9 dB relative to the tone; the
+  part far from the octave lines (> 170 cents) is now −38 dB, the same as the
+  plain reverb, so the shifter adds no grit. What remains within 8–50 cents
+  is the reverb's own modulation, re-shifted each pass. Shifter alone:
+  ≥ 99.96 % of the output on the target line at 44.1–192 kHz, level ripple
+  < 0.5 dB (was several dB at ~15 Hz).
+- **Bloom curve gentler below 70 %:** loop gain at 50 % is 0.72 (was 0.82).
+  On the piano phrase at Bloom 50 %, the 2–4 kHz band of the wet signal is
+  −17.5 dB re total (was −12.6 dB; dry piano −19.5 dB).
+- **Switches and Direction:** `macro.shimmerOn`, `macro.grainsOn`,
+  `macro.direction` (state version 2; v1 states load them at defaults).
+  Shimmer off: octave in the tail −61 dB (on: −3 dB). Grains off: 0 grain
+  events. Direction: forward 10/10 grains rise in pitch on a sweep, reverse
+  10/10 fall, both 6/4. Switching all three: worst click ratio 5.4–5.8
+  (static 4.6, threshold 12). Drift no longer reverses grains.
+- **Presets:** Tape Ghosts, Drift Ice → Both; Old Film, Ghost Note →
+  Reverse; Glass Harp → grains off (pure shimmer reverb); Whisper Room →
+  shimmer off.
+- **Fix:** restoring state now sets every parameter from the saved value;
+  JUCE skipped bools/choices left at unsnapped values (pluginval caught it on
+  the new switches; Freeze had the same latent bug).
+- CPU at 48 kHz/256: 1.57 % of one core (was 0.80 %); 96 kHz 3.1 %, 192 kHz
+  6.5 %.
+
 ## Decisions made without Shai (easy to revisit)
 
 - **Beads port strategy:** ported envelope, grain, scheduler and freeze tail

@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#include "dsp/PitchShifter.h"
+#include "dsp/SpectralShifter.h"
 #include "dsp/Smoothers.h"
 
 namespace glint {
@@ -39,10 +39,10 @@ public:
 private:
     double sampleRate_ = 48000.0;
     ShimmerSettings settings_;
-    PitchShifter aL_, aR_, bL_, bR_;
+    SpectralShifter shL_, shR_;
     Svf hcL_, hcR_, lcL_, lcR_;
     DcBlocker dcL_, dcR_;
-    Smoother gain_, blend_, bLevel_;
+    Smoother gain_, blend_;
     float env_ = 0.0f;
     float limGain_ = 1.0f;
     float detectLevel_ = 0.0f;

@@ -133,6 +133,9 @@ void GlintAudioProcessor::setCurrentProgram(int index)
     set(params::id::mix, p.mix);
     set(params::id::shimmer, static_cast<float>(p.shimmer));
     set(params::id::texture, static_cast<float>(p.texture));
+    set(params::id::direction, static_cast<float>(p.direction));
+    set(params::id::shimmerOn, p.shimmerOn ? 1.0f : 0.0f);
+    set(params::id::grainsOn, p.grainsOn ? 1.0f : 0.0f);
 }
 
 void GlintAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
@@ -150,13 +153,33 @@ void GlintAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
     if (xml == nullptr || !xml->hasTagName(apvts_.state.getType()))
         return;
     auto tree = juce::ValueTree::fromXml(*xml);
-    // Future versions migrate here, keyed on stateVersion. Version 1 is current.
+    // Migrations, keyed on stateVersion (current: params::kStateVersion).
     const int version = tree.getProperty("stateVersion", 1);
-    juce::ignoreUnused(version);
+    if (version < 2) {
+        // Version 1 had no Shimmer/Grains switches or Direction. Load them at
+        // their defaults rather than keeping whatever this instance had.
+        for (const char* pid : { params::id::shimmerOn, params::id::grainsOn, params::id::direction })
+            if (auto* prm = apvts_.getParameter(pid))
+                prm->setValueNotifyingHost(prm->getDefaultValue());
+    }
     currentProgram_.store(juce::jlimit(0, getNumPrograms() - 1, static_cast<int>(tree.getProperty("program", 0))));
     tree.removeProperty("stateVersion", nullptr);
     tree.removeProperty("program", nullptr);
     apvts_.replaceState(tree);
+    // replaceState skips parameters whose plain value already matches, so a
+    // bool or choice left at an unsnapped normalised value (a host can send
+    // 0.67 for "on") would keep it. Set every parameter to the saved value.
+    for (auto* prm : getParameters()) {
+        auto* r = dynamic_cast<juce::RangedAudioParameter*>(prm);
+        if (r == nullptr)
+            continue;
+        const auto child = tree.getChildWithProperty("id", r->getParameterID());
+        if (!child.isValid() || !child.hasProperty("value"))
+            continue;
+        const float target = r->convertTo0to1(static_cast<float>(child.getProperty("value")));
+        if (std::abs(r->getValue() - target) > 1.0e-6f)
+            r->setValueNotifyingHost(target);
+    }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

@@ -35,6 +35,8 @@ void GlintEngine::prepare(double sampleRate, int maxBlockSize)
     reverbLevel_.prepare(sampleRate, 30.0f);
     inGain_.prepare(sampleRate, 20.0f);
     outGain_.prepare(sampleRate, 20.0f);
+    shimmerGate_.prepare(sampleRate, 40.0f);
+    grainsGate_.prepare(sampleRate, 40.0f);
     reset(seed_);
 }
 
@@ -63,6 +65,9 @@ void GlintEngine::reset(uint32_t seed) noexcept
     reverbLevel_.snap(dbToGain(current_.reverbLevelDb));
     inGain_.snap(dbToGain(current_.inputGainDb));
     outGain_.snap(dbToGain(current_.outputGainDb));
+    shimmerGate_.snap(current_.shimmerOn ? 1.0f : 0.0f);
+    grainsGate_.snap(current_.grainsOn ? 1.0f : 0.0f);
+    direct_.snap(current_.grainsOn ? current_.directToReverb : 1.0f);
 }
 
 void GlintEngine::resumeAfterGap() noexcept
@@ -122,7 +127,7 @@ void GlintEngine::applyParams(const EngineParams& p) noexcept
     gp.sizeMs = p.sizeMs;
     gp.pitchSt = p.pitchSt;
     gp.shape = p.shape;
-    gp.densityHz = p.grainRateHz;
+    gp.densityHz = p.grainsOn ? p.grainRateHz : 0.0f; // off: no new grains
     gp.randomness = std::clamp(0.5f * (p.grainDensity + 1.0f), 0.0f, 1.0f);
     gp.randTime = p.randTime;
     gp.randSize = p.randSize;
@@ -155,11 +160,14 @@ void GlintEngine::applyParams(const EngineParams& p) noexcept
     shimmer_.setSettings(ss);
 
     const float gil = p.routing == Routing::GrainsInLoop ? std::clamp(p.grainsInLoop, 0.0f, 1.0f) : 0.0f;
-    grains_.setShimmerShare(gil);
+    grains_.setShimmerShare(p.shimmerOn ? gil : 0.0f);
 
     mix_.setTarget(std::clamp(p.mix, 0.0f, 1.0f));
     preDelay_.setTarget(std::clamp(p.preDelayMs, 0.0f, 500.0f) * 0.001f * static_cast<float>(sampleRate_));
-    direct_.setTarget(std::clamp(p.directToReverb, 0.0f, 1.0f));
+    // Grains off: all of the input goes straight to the reverb.
+    direct_.setTarget(p.grainsOn ? std::clamp(p.directToReverb, 0.0f, 1.0f) : 1.0f);
+    shimmerGate_.setTarget(p.shimmerOn ? 1.0f : 0.0f);
+    grainsGate_.setTarget(p.grainsOn ? 1.0f : 0.0f);
     gil_.setTarget(gil);
     grainsLevel_.setTarget(p.grainsLevelDb <= -96.0f ? 0.0f : dbToGain(p.grainsLevelDb));
     reverbLevel_.setTarget(p.reverbLevelDb <= -96.0f ? 0.0f : dbToGain(p.reverbLevelDb));
@@ -190,6 +198,12 @@ void GlintEngine::process(float* left, float* right, int numSamples) noexcept
             grainL_[static_cast<size_t>(i)] = grainR_[static_cast<size_t>(i)] = 0.0f;
         }
         grains_.process(writeL_.data(), writeR_.data(), grainL_.data(), grainR_.data(), n);
+        // Grains switch: the buffer keeps recording, the output fades.
+        for (int i = 0; i < n; ++i) {
+            const float g = grainsGate_.next();
+            grainL_[static_cast<size_t>(i)] *= g;
+            grainR_[static_cast<size_t>(i)] *= g;
+        }
 
         // 2) Reverb + shimmer loop, per sample.
         const float makeup = fdn_.makeupGain();
@@ -211,6 +225,11 @@ void GlintEngine::process(float* left, float* right, int numSamples) noexcept
             float vl, vr;
             fdn_.process(rl, rr, vl, vr);
             shimmer_.process(vl, vr, loopL_, loopR_);
+            // Shimmer switch: the loop keeps running (its limiter still rides
+            // the wet level above 100%), but nothing shifted is fed back.
+            const float sg = shimmerGate_.next();
+            loopL_ *= sg;
+            loopR_ *= sg;
             // Bloom limiter also trims the reverb's own sustain, gently.
             fdn_.setGainScale(1.0f - (1.0f - shimmer_.limiterGain()) * 0.05f);
             retL_[k] = loopL_;

@@ -75,7 +75,7 @@ glint/
     dsp/                    pure C++, no JUCE
       beads_port/           adapted Beads sources, MIT headers kept
       GrainEngine.h/.cpp    clean interface over beads_port
-      PitchShifter.h/.cpp
+      SpectralShifter.h/.cpp, Fft.h
       Diffuser.h/.cpp
       Fdn.h/.cpp
       ShimmerLoop.h/.cpp
@@ -130,9 +130,13 @@ crossfades from Serial into Grains-in-loop from 70% upward.
 loss) and Dust (wow, flutter, faint hiss). They apply to buffer writes. The
 engine also keeps a Digital mode, but no macro uses it.
 
-**Shimmer pitch shifter:** a two-tap delay-line shifter with crossfaded
-windows of about 50–80 ms, in two voices (A and B with its own level). It's
-cheap and adds no reported latency, and its slight smear is part of the sound.
+**Shimmer pitch shifter:** a phase vocoder (85 ms frames, 4× overlap) with
+peak-region shifting and identity phase locking (Laroche & Dolson), in two
+voices (A and B with its own level) sharing one analysis. Steady tones shift
+without the amplitude wobble of a delay-line shifter. Its one-frame latency
+only lengthens the loop. (Changed 2026-11-15: the first version used a
+two-tap delay-line shifter, whose 13–16 Hz wobble made the shimmer grainy on
+piano.)
 
 **Reverb:** 4 series allpasses per channel for input diffusion → an 8-line FDN
 (Householder or Hadamard matrix, mutually prime delay lengths scaled by Size)
@@ -173,17 +177,17 @@ changes, bypass, and mono-in.
 
 ## 5. Parameters
 
-### 5a. Macros: the only host parameters (11)
+### 5a. Host parameters: 11 macros + 3 switches
 
 IDs are stable strings, such as `macro.bloom`. They never change after
 release.
 
 | Macro | Range | Default | Drives (engine parameters) |
 | --- | --- | --- | --- |
-| Bloom | 0–110% | 60% | Feedback (perceptual curve); Shimmer blend 40→90%; Decay ×1→×2; from 70% up, crossfades Serial → Grains-in-loop; above 100% = Bloom (limiter holds level) |
+| Bloom | 0–110% | 60% | Feedback (loop gain 1 − 30^−(b^1.4): 0.47 at 30%, 0.72 at 50%, 0.88 at 70%); Shimmer blend 40→90%; Decay ×1→×2; from 70% up, crossfades Serial → Grains-in-loop; above 100% = Bloom (limiter holds level) |
 | Space | 0–100% | 65% | Reverb Size 30→100%; Decay 1.5→30 s (log); Diffusion 60→95%; Pre-delay 10→80 ms |
 | Density | 0–100% | 45% | Random grain rate 0→about 40/s; grain Size 900→150 ms as density rises, so overlap stays even; Shape fixed smooth |
-| Drift | 0–100% | 35% | Random time 10→70%; pitch jitter 0→±0.3 st; Reverse 0→30%; reverb Mod depth 15→70% |
+| Drift | 0–100% | 35% | Random time 10→70%; pitch jitter 0→±0.3 st; reverb Mod depth 15→70% |
 | Spread | 0–100% | 70% | Grain pan width; reverb Width 80→150% |
 | Stereo density | −100 to +100% | 0 (even) | Pan distribution inside Spread: centre ↔ edges |
 | Tone | −100 to +100% | 0 | Loop high cut 3→14 kHz; Damping 4→16 kHz |
@@ -191,6 +195,12 @@ release.
 | Texture | Clean / Tape / Dust | Clean | Colour mode |
 | Mix | 0–100% | 35% | Dry/wet, constant-power |
 | Freeze | on/off | off | Grain buffer recording |
+| Shimmer on (`macro.shimmerOn`) | on/off | on | Off: the pitch-shifted loop fades out (40 ms); a plain reverb. Bloom still sets decay |
+| Grains on (`macro.grainsOn`) | on/off | on | Off: no new grains, grain output fades out (40 ms), all input goes straight to the reverb. The buffer keeps recording |
+| Direction (`macro.direction`) | Forward / Both / Reverse | Forward | Reverse probability 0 / 50 / 100% |
+
+The three switches arrived with state version 2; a version-1 state loads
+them at their defaults.
 
 Fixed, with no control: grain Pitch 0, Grain feedback 0, no tempo sync,
 Output gain 0 dB. All curves live in `src/dsp/Macros.h`.

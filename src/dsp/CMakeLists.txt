@@ -6,7 +6,7 @@ add_library(glint_dsp STATIC
     Params.cpp
     Diffuser.cpp
     Fdn.cpp
-    PitchShifter.cpp
+    SpectralShifter.cpp
     ShimmerLoop.cpp
 )
 target_include_directories(glint_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)

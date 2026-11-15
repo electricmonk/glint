@@ -28,9 +28,32 @@ void Pill::paintButton(juce::Graphics& g, bool highlighted, bool)
         g.setColour(on ? colour::chipOnBorder : (highlighted ? colour::knobRim : colour::hairline2));
         g.drawRoundedRectangle(b, radius, 1.0f);
         g.setColour(on ? colour::text : colour::textSecondary);
-        g.setFont(font(FontFace::Inter400, 12.0f));
-        g.drawText(getButtonText(), getLocalBounds(), juce::Justification::centred, false);
+        if (icon_ != nullptr) {
+            icon_(g, b.withSizeKeepingCentre(16.0f, 10.0f));
+        } else {
+            g.setFont(font(FontFace::Inter400, 12.0f));
+            g.drawText(getButtonText(), getLocalBounds(), juce::Justification::centred, false);
+        }
         break;
+    }
+    case Kind::GroupToggle: {
+        const float d = 7.0f;
+        const juce::Rectangle<float> dot(1.0f, (b.getHeight() - d) * 0.5f + 0.5f, d, d);
+        if (on) {
+            g.setColour(accent_);
+            g.fillEllipse(dot);
+        } else {
+            g.setColour(highlighted ? colour::soft : colour::textDim);
+            g.drawEllipse(dot.reduced(0.5f), 1.0f);
+        }
+        g.setColour(on ? colour::textSecondary : (highlighted ? colour::soft : colour::textDim));
+        g.setFont(font(FontFace::Inter400, 11.0f).withExtraKerningFactor(0.14f));
+        g.drawText(getButtonText().toUpperCase(), getLocalBounds().withTrimmedLeft(14), juce::Justification::centredLeft, false);
+        if (hasKeyboardFocus(false)) {
+            g.setColour(colour::ice);
+            g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 3.0f, 1.5f);
+        }
+        return;
     }
     case Kind::Freeze: {
         g.setColour(on ? accent_ : juce::Colours::transparentBlack);
@@ -57,13 +80,48 @@ void Pill::paintButton(juce::Graphics& g, bool highlighted, bool)
 
 // ---------------------------------------------------------------------------
 
-ChipGroup::ChipGroup(juce::RangedAudioParameter& param, const juce::StringArray& names, const juce::String& title)
+void drawArrowRight(juce::Graphics& g, juce::Rectangle<float> r)
+{
+    juce::Path p;
+    const float y = r.getCentreY();
+    p.startNewSubPath(r.getX(), y);
+    p.lineTo(r.getRight(), y);
+    p.startNewSubPath(r.getRight() - 4.5f, y - 4.0f);
+    p.lineTo(r.getRight(), y);
+    p.lineTo(r.getRight() - 4.5f, y + 4.0f);
+    g.strokePath(p, juce::PathStrokeType(1.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+}
+
+void drawArrowLeft(juce::Graphics& g, juce::Rectangle<float> r)
+{
+    juce::Graphics::ScopedSaveState s(g);
+    g.addTransform(juce::AffineTransform::scale(-1.0f, 1.0f, r.getCentreX(), r.getCentreY()));
+    drawArrowRight(g, r);
+}
+
+void drawArrowBoth(juce::Graphics& g, juce::Rectangle<float> r)
+{
+    // Two stacked half-arrows: forward on top, backward below.
+    juce::Path p;
+    const float y1 = r.getY() + 2.0f, y2 = r.getBottom() - 2.0f;
+    p.startNewSubPath(r.getX(), y1);
+    p.lineTo(r.getRight(), y1);
+    p.lineTo(r.getRight() - 4.0f, y1 - 3.0f);
+    p.startNewSubPath(r.getRight(), y2);
+    p.lineTo(r.getX(), y2);
+    p.lineTo(r.getX() + 4.0f, y2 + 3.0f);
+    g.strokePath(p, juce::PathStrokeType(1.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+}
+
+ChipGroup::ChipGroup(juce::RangedAudioParameter& param, const juce::StringArray& names, const juce::String& title,
+                     bool showTitle)
     : attachment_(param, [this](float v) {
         const int idx = juce::roundToInt(v);
         for (size_t i = 0; i < chips_.size(); ++i)
             chips_[i]->setToggleState(static_cast<int>(i) == idx, juce::dontSendNotification);
     })
     , title_(title)
+    , showTitle_(showTitle)
 {
     setTitle(title);
     setFocusContainerType(FocusContainerType::focusContainer);
@@ -84,21 +142,36 @@ void ChipGroup::select(int index)
     attachment_.setValueAsCompleteGesture(static_cast<float>(index));
 }
 
+void ChipGroup::setIcons(std::initializer_list<Pill::Icon> icons)
+{
+    size_t i = 0;
+    for (auto icon : icons)
+        if (i < chips_.size())
+            chips_[i++]->setIcon(icon);
+    resized();
+}
+
+int ChipGroup::chipWidth(const Pill& c) const
+{
+    if (c.hasIcon())
+        return 38;
+    const auto f = font(FontFace::Inter400, 12.0f);
+    return juce::roundToInt(juce::GlyphArrangement::getStringWidth(f, c.getButtonText())) + 24;
+}
+
 int ChipGroup::preferredWidth() const
 {
-    const auto f = font(FontFace::Inter400, 12.0f);
     int w = 0;
     for (const auto& c : chips_)
-        w += juce::roundToInt(juce::GlyphArrangement::getStringWidth(f, c->getButtonText())) + 24 + 4;
+        w += chipWidth(*c) + 4;
     return w - 4;
 }
 
 void ChipGroup::resized()
 {
-    const auto f = font(FontFace::Inter400, 12.0f);
     int x = 0;
     for (auto& c : chips_) {
-        const int w = juce::roundToInt(juce::GlyphArrangement::getStringWidth(f, c->getButtonText())) + 24;
+        const int w = chipWidth(*c);
         c->setBounds(x, getHeight() - 26, w, 26);
         x += w + 4;
     }
@@ -106,6 +179,8 @@ void ChipGroup::resized()
 
 void ChipGroup::paint(juce::Graphics& g)
 {
+    if (!showTitle_)
+        return;
     g.setColour(colour::textSecondary);
     g.setFont(font(FontFace::Inter400, 11.0f).withExtraKerningFactor(0.14f));
     g.drawText(title_.toUpperCase(), 0, 0, getWidth(), 14, juce::Justification::centredLeft, false);
@@ -121,6 +196,26 @@ FreezeButton::FreezeButton(juce::RangedAudioParameter& param)
     setClickingTogglesState(false);
     onClick = [this] { attachment_.setValueAsCompleteGesture(getToggleState() ? 0.0f : 1.0f); };
     attachment_.sendInitialUpdate();
+}
+
+// ---------------------------------------------------------------------------
+
+GroupToggle::GroupToggle(juce::RangedAudioParameter& param, const juce::String& name, juce::Colour accent)
+    : Pill(name, Kind::GroupToggle)
+    , attachment_(param, [this](float v) { setToggleState(v >= 0.5f, juce::dontSendNotification); })
+{
+    setAccent(accent);
+    setTitle(name);
+    setDescription(name + " on/off");
+    setClickingTogglesState(false);
+    onClick = [this] { attachment_.setValueAsCompleteGesture(getToggleState() ? 0.0f : 1.0f); };
+    attachment_.sendInitialUpdate();
+}
+
+int GroupToggle::preferredWidth() const
+{
+    const auto f = font(FontFace::Inter400, 11.0f).withExtraKerningFactor(0.14f);
+    return 14 + juce::roundToInt(juce::GlyphArrangement::getStringWidth(f, getButtonText().toUpperCase())) + 4;
 }
 
 // ---------------------------------------------------------------------------

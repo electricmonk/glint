@@ -46,20 +46,27 @@ public:
         , space(*param(params::id::space), "Space", ui::colour::soft, lg())
         , spread(*param(params::id::spread), "Spread", ui::colour::soft, lg())
         , stereo(*param(params::id::stereoDensity), juce::String::fromUTF8("Centre \xc2\xb7 Edges"), ui::colour::soft, md(), true)
-        , shimmer(*param(params::id::shimmer), params::shimmerNames(), "Shimmer")
-        , texture(*param(params::id::texture), params::textureNames(), "Texture")
+        , shimmerOn(*param(params::id::shimmerOn), "Shimmer", ui::colour::gold)
+        , grainsOn(*param(params::id::grainsOn), "Grains", ui::colour::ice)
+        , shimmer(*param(params::id::shimmer), params::shimmerNames(), "Shimmer", false)
+        , texture(*param(params::id::texture), params::textureNames(), "Texture", false)
+        , direction(*param(params::id::direction), params::directionNames(), "Direction", false)
         , tone(*param(params::id::tone), "Tone", ui::colour::soft, sm(), true)
         , mix(*param(params::id::mix), "Mix", ui::colour::soft, sm())
     {
         stereo.setTitle("Stereo density");
+        direction.setIcons({ &ui::drawArrowRight, &ui::drawArrowBoth, &ui::drawArrowLeft });
         for (juce::Component* c : std::initializer_list<juce::Component*> {
-                 &cloud, &presetPill, &freeze, &density, &drift, &bloom, &space, &spread, &stereo, &shimmer, &texture, &tone, &mix })
+                 &cloud, &presetPill, &freeze, &density, &drift, &bloom, &space, &spread, &stereo, &shimmerOn, &shimmer,
+                 &grainsOn, &texture, &direction, &tone, &mix })
             addAndMakeVisible(c);
         int order = 1;
         for (juce::Component* c : std::initializer_list<juce::Component*> {
-                 &presetPill, &freeze, &density, &drift, &bloom, &space, &spread, &stereo, &shimmer, &texture, &tone, &mix })
+                 &presetPill, &freeze, &density, &drift, &bloom, &space, &spread, &stereo, &shimmerOn, &shimmer, &grainsOn,
+                 &texture, &direction, &tone, &mix })
             c->setExplicitFocusOrder(order++);
         setSize(StepConstrainer::kBaseW, StepConstrainer::kBaseH);
+        refresh(); // switched-off sections start dimmed
     }
 
     juce::RangedAudioParameter* param(const char* id) { return proc.state().getParameter(id); }
@@ -101,11 +108,15 @@ public:
             it.c->setBounds(juce::roundToInt(x), y, it.w, it.h);
             x += static_cast<float>(it.w) + gap;
         }
-        // Footer: chips bottom-aligned at 536.
+        // Footer: chips bottom-aligned at 536; each section's on/off switch
+        // sits in its heading row.
         shimmer.setBounds(24, 490, shimmer.preferredWidth(), 46);
+        shimmerOn.setBounds(shimmer.getX() - 1, 488, shimmerOn.preferredWidth(), 18);
         texture.setBounds(shimmer.getRight() + 20, 490, texture.preferredWidth(), 46);
-        mix.setBounds(796 - 112, 492, 112, 44);
-        tone.setBounds(mix.getX() - 20 - 112, 492, 112, 44);
+        direction.setBounds(texture.getRight() + 10, 490, direction.preferredWidth(), 46);
+        grainsOn.setBounds(texture.getX() - 1, 488, grainsOn.preferredWidth(), 18);
+        mix.setBounds(796 - 104, 492, 104, 44);
+        tone.setBounds(mix.getX() - 12 - 104, 492, 104, 44);
     }
 
     void refresh()
@@ -117,6 +128,15 @@ public:
         s.space = get(params::id::space) * 0.01f;
         s.frozen = get(params::id::freeze) >= 0.5f;
         cloud.setState(s);
+        // Switched-off sections dim their controls (still clickable).
+        const float shimmerAlpha = get(params::id::shimmerOn) >= 0.5f ? 1.0f : 0.4f;
+        const float grainsAlpha = get(params::id::grainsOn) >= 0.5f ? 1.0f : 0.4f;
+        if (shimmer.getAlpha() != shimmerAlpha)
+            shimmer.setAlpha(shimmerAlpha);
+        if (texture.getAlpha() != grainsAlpha) {
+            texture.setAlpha(grainsAlpha);
+            direction.setAlpha(grainsAlpha);
+        }
         if (lastProgram != proc.getCurrentProgram()) {
             lastProgram = proc.getCurrentProgram();
             presetPill.refresh();
@@ -128,7 +148,8 @@ public:
     ui::PresetPill presetPill;
     ui::FreezeButton freeze;
     ui::Knob density, drift, bloom, space, spread, stereo;
-    ui::ChipGroup shimmer, texture;
+    ui::GroupToggle shimmerOn, grainsOn;
+    ui::ChipGroup shimmer, texture, direction;
     ui::Knob tone, mix;
     int lastProgram = -1;
 };

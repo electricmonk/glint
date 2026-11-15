@@ -61,6 +61,52 @@ inline std::vector<float> notes(double sr, double seconds, double amp)
     return x;
 }
 
+// A piano-like chord progression: stretched (inharmonic) partials with
+// per-partial decay and a short hammer thump. Cmaj9 - Am7 - Fmaj7 - G6 with a
+// melody on top, one chord per 1.5 s.
+inline std::vector<float> piano(double sr, double seconds, double amp)
+{
+    std::vector<float> x(static_cast<size_t>(sr * seconds), 0.0f);
+    struct Note { double t, midi, vel; };
+    const Note notes[] = {
+        { 0.0, 48, 0.8 }, { 0.0, 55, 0.6 }, { 0.0, 59, 0.6 }, { 0.0, 62, 0.6 }, { 0.0, 64, 0.7 }, { 0.0, 76, 0.9 },
+        { 0.75, 74, 0.7 },
+        { 1.5, 45, 0.8 }, { 1.5, 52, 0.6 }, { 1.5, 55, 0.6 }, { 1.5, 60, 0.6 }, { 1.5, 72, 0.9 },
+        { 2.25, 71, 0.7 },
+        { 3.0, 41, 0.8 }, { 3.0, 48, 0.6 }, { 3.0, 52, 0.6 }, { 3.0, 57, 0.6 }, { 3.0, 69, 0.9 },
+        { 3.75, 72, 0.7 },
+        { 4.5, 43, 0.8 }, { 4.5, 50, 0.6 }, { 4.5, 55, 0.6 }, { 4.5, 59, 0.6 }, { 4.5, 64, 0.6 }, { 4.5, 74, 0.9 },
+        { 5.25, 71, 0.6 }, { 5.6, 67, 0.6 },
+    };
+    Rng rng(99);
+    for (const auto& n : notes) {
+        const double f0 = 440.0 * std::pow(2.0, (n.midi - 69.0) / 12.0);
+        const double inharm = 0.0004 * std::pow(2.0, (n.midi - 60.0) / 24.0);
+        const size_t start = static_cast<size_t>(n.t * sr);
+        const size_t len = static_cast<size_t>(4.0 * sr);
+        const double bright = 0.6 + 0.4 * n.vel;
+        for (int h = 1; h <= 16; ++h) {
+            const double fh = f0 * h * std::sqrt(1.0 + inharm * h * h);
+            if (fh > sr * 0.45)
+                break;
+            const double a = std::pow(static_cast<double>(h), -1.1 / bright) * n.vel;
+            const double decay = 0.6 + 0.25 * h + f0 / 400.0; // higher partials and notes die faster
+            const double ph = rng.uniform() * 6.283185307;
+            for (size_t i = 0; i < len && start + i < x.size(); ++i) {
+                const double t = static_cast<double>(i) / sr;
+                const double env = std::min(1.0, t / 0.002) * (0.65 * std::exp(-t * decay * 3.0) + 0.35 * std::exp(-t * decay * 0.5));
+                x[start + i] += static_cast<float>(amp * 0.18 * a * env * std::sin(6.283185307 * fh * t + ph));
+            }
+        }
+        // Hammer: 6 ms of decaying noise.
+        for (size_t i = 0; i < static_cast<size_t>(0.006 * sr) && start + i < x.size(); ++i) {
+            const double t = static_cast<double>(i) / sr;
+            x[start + i] += static_cast<float>(amp * 0.05 * n.vel * rng.bipolar() * std::exp(-t * 900.0));
+        }
+    }
+    return x;
+}
+
 inline std::vector<float> impulse(double sr, double seconds, double amp)
 {
     std::vector<float> x(static_cast<size_t>(sr * seconds), 0.0f);

@@ -27,12 +27,14 @@ struct EngineParams {
     float shape = 0.5f;
     float randTime = 0.2f, randSize = 0.0f, randPitch = 0.0f;
     float pitchJitterSt = 0.0f;
-    float reverse = 0.0f;
+    float reverse = 0.0f;           // probability a grain plays backwards
     float grainFeedback = 0.0f;     // 0..0.95
     bool freeze = false;
+    bool grainsOn = true;           // off: no new grains, grain output faded out, input straight to the reverb
     Texture color = Texture::Clean;
     float directToReverb = 0.5f;    // how much of the input bypasses the grains into the reverb
     // Shimmer
+    bool shimmerOn = true;          // off: the pitch-shifted loop is faded out (plain reverb)
     float shimmerBlend = 0.7f;      // 0..1
     float shiftA = 12.0f, shiftB = 7.0f, shiftBLevel = 0.0f;
     float loopHighCutHz = 8000.0f, loopLowCutHz = 120.0f;

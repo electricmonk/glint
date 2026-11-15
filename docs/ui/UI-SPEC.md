@@ -30,9 +30,12 @@ value formatting and the five presets, then rebuild the UI in JUCE.
    grain events (pan, age, level, is-shimmer) at 60 fps.
 3. **Knob row:** Density, Drift, **Bloom** (large, centred), Space, Spread,
    Stereo density (smaller). Each knob shows a label, then a value underneath.
-4. **Footer:** Shimmer interval chips (Octave · Fifth · Oct + 5th ·
-   Sub + Oct), Texture chips (Clean · Tape · Dust), then small Tone and Mix
-   knobs.
+4. **Footer:** a SHIMMER section (interval chips: Octave · Fifth ·
+   Oct + 5th · Sub + Oct), a GRAINS section (Texture chips Clean · Tape ·
+   Dust, then Direction chips drawn as arrows: forward · both · reverse),
+   then small Tone and Mix knobs. Each section heading is its on/off switch:
+   a dot (gold for Shimmer, ice for Grains) filled when on. A switched-off
+   section's chips dim to 40% but stay clickable.
 
 ## Knob behaviour
 

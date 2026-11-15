@@ -52,6 +52,8 @@ bool EngineParams::set(std::string_view n, double v) noexcept
         }
     }
     if (n == "freeze") { freeze = v != 0.0; return true; }
+    if (n == "grainsOn") { grainsOn = v != 0.0; return true; }
+    if (n == "shimmerOn") { shimmerOn = v != 0.0; return true; }
     if (n == "color") { color = static_cast<Texture>(static_cast<int>(v)); return true; }
     if (n == "routing") { routing = static_cast<Routing>(static_cast<int>(v)); return true; }
     return false;

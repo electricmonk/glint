@@ -52,12 +52,12 @@ Rendered run(GlintAudioProcessor& p, const std::vector<float>& in, int block, bo
 
 } // namespace
 
-TEST_CASE("Plugin: exactly the 11 macros are host parameters, with frozen IDs")
+TEST_CASE("Plugin: the 11 macros plus 3 switches are host parameters, with frozen IDs")
 {
     GlintAudioProcessor p;
     const juce::StringArray expected { "macro.bloom", "macro.space", "macro.density", "macro.drift", "macro.spread",
                                        "macro.stereoDensity", "macro.tone", "macro.shimmer", "macro.texture", "macro.mix",
-                                       "macro.freeze" };
+                                       "macro.freeze", "macro.shimmerOn", "macro.grainsOn", "macro.direction" };
     juce::StringArray ids;
     for (auto* prm : p.getParameters())
         if (auto* r = dynamic_cast<juce::RangedAudioParameter*>(prm))
@@ -197,6 +197,54 @@ TEST_CASE("Plugin: bypass in and out is click-free")
     CHECK(clicks.clicks == 0);
 }
 
+TEST_CASE("Plugin: restoring state snaps bools and choices left at unsnapped values")
+{
+    // What pluginval does: save, set raw normalised values, restore.
+    auto p = makeProcessor();
+    setPlain(*p, params::id::shimmerOn, 1.0f);
+    setPlain(*p, params::id::freeze, 0.0f);
+    juce::MemoryBlock mb;
+    p->getStateInformation(mb);
+    for (auto* prm : p->getParameters()) {
+        auto* r = dynamic_cast<juce::RangedAudioParameter*>(prm);
+        if (r->getParameterID() == params::id::shimmerOn) r->setValueNotifyingHost(0.67f);
+        if (r->getParameterID() == params::id::freeze) r->setValueNotifyingHost(0.3f);
+    }
+    p->setStateInformation(mb.getData(), static_cast<int>(mb.getSize()));
+    for (auto* prm : p->getParameters()) {
+        auto* r = dynamic_cast<juce::RangedAudioParameter*>(prm);
+        if (r->getParameterID() == params::id::shimmerOn) CHECK(r->getValue() == 1.0f);
+        if (r->getParameterID() == params::id::freeze) CHECK(r->getValue() == 0.0f);
+    }
+}
+
+TEST_CASE("Plugin: version-1 state loads with the switches on and Direction forward")
+{
+    // Save a state, then rewrite it as version 1 without the new parameters.
+    auto a = makeProcessor();
+    setPlain(*a, params::id::bloom, 77.0f);
+    juce::MemoryBlock mb;
+    a->getStateInformation(mb);
+    auto xml = juce::AudioProcessor::getXmlFromBinary(mb.getData(), static_cast<int>(mb.getSize()));
+    REQUIRE(xml != nullptr);
+    xml->setAttribute("stateVersion", 1);
+    for (const char* pid : { params::id::shimmerOn, params::id::grainsOn, params::id::direction })
+        if (auto* child = xml->getChildByAttribute("id", pid))
+            xml->removeChildElement(child, true);
+    juce::MemoryBlock v1;
+    juce::AudioProcessor::copyXmlToBinary(*xml, v1);
+
+    auto b = makeProcessor();
+    setPlain(*b, params::id::shimmerOn, 0.0f);
+    setPlain(*b, params::id::grainsOn, 0.0f);
+    setPlain(*b, params::id::direction, 2.0f);
+    b->setStateInformation(v1.getData(), static_cast<int>(v1.getSize()));
+    CHECK(b->state().getRawParameterValue(params::id::bloom)->load() == 77.0f);
+    CHECK(b->state().getRawParameterValue(params::id::shimmerOn)->load() == 1.0f);
+    CHECK(b->state().getRawParameterValue(params::id::grainsOn)->load() == 1.0f);
+    CHECK(b->state().getRawParameterValue(params::id::direction)->load() == 0.0f);
+}
+
 TEST_CASE("Editor: reopens with the current state, controls are accessible")
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -237,7 +285,25 @@ TEST_CASE("Editor: reopens with the current state, controls are accessible")
     };
     walk(*ed);
     CHECK(sliders == 8);           // 6 row knobs + Tone + Mix
-    CHECK(buttons >= 2 + 1 + 4 + 3); // preset arrows, freeze, chips
+    CHECK(buttons >= 2 + 1 + 4 + 3 + 3 + 2); // preset arrows, freeze, chips, direction, switches
+
+    // The section switches are reachable by name and toggle their parameter.
+    std::function<juce::Button*(juce::Component&, const juce::String&)> findButton =
+        [&](juce::Component& c, const juce::String& title) -> juce::Button* {
+        if (auto* b = dynamic_cast<juce::Button*>(&c); b && b->getTitle() == title) return b;
+        for (auto* child : c.getChildren())
+            if (auto* r = findButton(*child, title)) return r;
+        return nullptr;
+    };
+    for (const char* name : { "Shimmer", "Grains" }) {
+        auto* b = findButton(*ed, name);
+        REQUIRE(b != nullptr);
+        const char* pid = juce::String(name) == "Shimmer" ? params::id::shimmerOn : params::id::grainsOn;
+        CHECK(b->getToggleState());
+        REQUIRE(b->onClick);
+        b->onClick(); // what a click (or the accessibility press action) runs
+        CHECK(p->state().getRawParameterValue(pid)->load() == 0.0f);
+    }
 
     // Accessible value change goes to the parameter.
     std::function<juce::AccessibilityHandler*(juce::Component&, const juce::String&)> find =

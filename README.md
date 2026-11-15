@@ -6,7 +6,9 @@ long, diffuse 8-line FDN reverb with a pitch-shifted feedback loop. Above 100%,
 **Bloom** lets the loop sustain while a limiter holds the tail near −6 dBFS.
 
 Eleven controls: Bloom, Space, Density, Drift, Spread, Stereo density, Tone,
-Shimmer interval, Texture, Mix and Freeze. 20 factory presets.
+Shimmer interval, Texture, Mix and Freeze, plus on/off switches for the
+Shimmer and Grains sections and a grain Direction (forward, both, reverse).
+20 factory presets.
 
 ## Build
 

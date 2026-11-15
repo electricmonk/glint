@@ -70,6 +70,7 @@ private:
 
     Smoother wetGate_;
     Smoother mix_, preDelay_, direct_, gil_, grainsLevel_, reverbLevel_, inGain_, outGain_;
+    Smoother shimmerGate_, grainsGate_; // Shimmer / Grains on-off switches
 
     std::array<float, kControlBlock> writeL_ {}, writeR_ {}, grainL_ {}, grainR_ {}, retL_ {}, retR_ {};
     float loopL_ = 0.0f, loopR_ = 0.0f;

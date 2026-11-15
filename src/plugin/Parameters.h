@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// The 11 macros: the only host parameters. IDs are frozen once Phase 4 lands;
-// bump kStateVersion instead of renaming.
+// Host parameters: the 11 macros plus the Shimmer/Grains switches and grain
+// Direction (added in state version 2). IDs are frozen once they ship; bump
+// kStateVersion instead of renaming.
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -9,7 +10,7 @@
 
 namespace glint::params {
 
-constexpr int kStateVersion = 1;
+constexpr int kStateVersion = 2;
 constexpr int kParamVersionHint = 1;
 
 namespace id {
@@ -24,6 +25,10 @@ inline constexpr const char* shimmer = "macro.shimmer";
 inline constexpr const char* texture = "macro.texture";
 inline constexpr const char* mix = "macro.mix";
 inline constexpr const char* freeze = "macro.freeze";
+// State version 2.
+inline constexpr const char* shimmerOn = "macro.shimmerOn";
+inline constexpr const char* grainsOn = "macro.grainsOn";
+inline constexpr const char* direction = "macro.direction";
 } // namespace id
 
 // UI/host value text (matches docs/ui/UI-SPEC.md).
@@ -37,6 +42,12 @@ inline const juce::StringArray& shimmerNames()
 inline const juce::StringArray& textureNames()
 {
     static const juce::StringArray names { "Clean", "Tape", "Dust" };
+    return names;
+}
+
+inline const juce::StringArray& directionNames()
+{
+    static const juce::StringArray names { "Forward", "Both", "Reverse" };
     return names;
 }
 
@@ -55,6 +66,9 @@ struct Pointers {
     std::atomic<float>* texture = nullptr;
     std::atomic<float>* mix = nullptr;
     std::atomic<float>* freeze = nullptr;
+    std::atomic<float>* shimmerOn = nullptr;
+    std::atomic<float>* grainsOn = nullptr;
+    std::atomic<float>* direction = nullptr;
 
     void bind(juce::AudioProcessorValueTreeState& s);
     MacroValues read() const noexcept;

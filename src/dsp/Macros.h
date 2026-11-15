@@ -10,8 +10,9 @@
 namespace glint {
 
 enum class ShimmerInterval { Octave = 0, Fifth = 1, OctFifth = 2, SubOct = 3 };
+enum class GrainDirection { Forward = 0, Both = 1, Reverse = 2 };
 
-// The 11 host-visible macros. Continuous ones are smoothed by GlintEngine
+// The host-visible controls (11 macros + 3 switches). Continuous ones are smoothed by GlintEngine
 // before map() runs; percentages are 0..1 (Bloom 0..1.1, bipolar -1..1).
 struct MacroValues {
     float bloom = 0.60f;
@@ -25,6 +26,9 @@ struct MacroValues {
     Texture texture = Texture::Clean;
     float mix = 0.35f;
     bool freeze = false;
+    bool shimmerOn = true;
+    bool grainsOn = true;
+    GrainDirection direction = GrainDirection::Forward;
 };
 
 namespace macros {
@@ -77,11 +81,10 @@ inline EngineParams map(const MacroValues& m) noexcept
     // With no grains the input still has to reach the reverb.
     p.directToReverb = lerp(1.0f, 0.35f, smoothstep(0.0f, 0.5f, d));
 
-    // Drift: random time 10->70%, pitch jitter 0->0.3 st, reverse 0->30%, mod depth 15->70%.
+    // Drift: random time 10->70%, pitch jitter 0->0.3 st, mod depth 15->70%.
     const float r = std::clamp(m.drift, 0.0f, 1.0f);
     p.randTime = lerp(0.1f, 0.7f, r);
     p.pitchJitterSt = 0.3f * r;
-    p.reverse = 0.3f * r;
     p.modDepth = lerp(0.15f, 0.7f, r);
     p.modRateHz = kModRateHz;
 
@@ -103,6 +106,15 @@ inline EngineParams map(const MacroValues& m) noexcept
     case ShimmerInterval::OctFifth: p.shiftA = 12.0f; p.shiftB = 19.0f; p.shiftBLevel = 0.6f; break;
     case ShimmerInterval::SubOct: p.shiftA = -12.0f; p.shiftB = 12.0f; p.shiftBLevel = 0.8f; break;
     }
+
+    // Direction: share of grains played backwards.
+    switch (m.direction) {
+    case GrainDirection::Forward: p.reverse = 0.0f; break;
+    case GrainDirection::Both: p.reverse = 0.5f; break;
+    case GrainDirection::Reverse: p.reverse = 1.0f; break;
+    }
+    p.shimmerOn = m.shimmerOn;
+    p.grainsOn = m.grainsOn;
 
     p.color = m.texture;
     p.mix = std::clamp(m.mix, 0.0f, 1.0f);

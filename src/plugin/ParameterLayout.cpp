@@ -58,6 +58,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
                                                             textureNames(), 0));
     layout.add(percent(id::mix, "Mix", 0.0f, 100.0f, 35.0f));
     layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID { id::freeze, kParamVersionHint }, "Freeze", false));
+    // State version 2.
+    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID { id::shimmerOn, 2 }, "Shimmer On", true));
+    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID { id::grainsOn, 2 }, "Grains On", true));
+    layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID { id::direction, 2 }, "Direction",
+                                                            directionNames(), 0));
     return layout;
 }
 
@@ -74,6 +79,9 @@ void Pointers::bind(juce::AudioProcessorValueTreeState& s)
     texture = s.getRawParameterValue(id::texture);
     mix = s.getRawParameterValue(id::mix);
     freeze = s.getRawParameterValue(id::freeze);
+    shimmerOn = s.getRawParameterValue(id::shimmerOn);
+    grainsOn = s.getRawParameterValue(id::grainsOn);
+    direction = s.getRawParameterValue(id::direction);
 }
 
 MacroValues Pointers::read() const noexcept
@@ -95,6 +103,9 @@ MacroValues Pointers::read() const noexcept
     default: m.texture = Texture::Clean; break;
     }
     m.freeze = freeze->load(std::memory_order_relaxed) >= 0.5f;
+    m.shimmerOn = shimmerOn->load(std::memory_order_relaxed) >= 0.5f;
+    m.grainsOn = grainsOn->load(std::memory_order_relaxed) >= 0.5f;
+    m.direction = static_cast<GrainDirection>(juce::jlimit(0, 2, static_cast<int>(direction->load(std::memory_order_relaxed))));
     return m;
 }
 

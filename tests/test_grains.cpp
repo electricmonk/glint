@@ -146,3 +146,80 @@ TEST_CASE("Grains: never more than 32 active, rate follows density")
     CHECK(rate > 130.0 * 0.85);
     CHECK(rate < 130.0 * 1.15);
 }
+
+TEST_CASE("Grains: Direction plays grains forwards, backwards or both")
+{
+    // Record a rising sweep, then play single 400 ms grains from it. Forward
+    // grains rise in pitch, reverse grains fall; Both gives a mix.
+    const double sr = 48000.0;
+    std::vector<float> sweep(static_cast<size_t>(sr * 3.0));
+    double ph = 0.0;
+    for (size_t i = 0; i < sweep.size(); ++i) {
+        const double t = static_cast<double>(i) / sr;
+        ph += 2.0 * 3.14159265358979 * 300.0 * std::exp2(t * 1.5) / sr; // 300 Hz rising 1.5 octaves/s
+        sweep[i] = static_cast<float>(0.5 * std::sin(ph));
+    }
+    auto risingShare = [&](float reverse) {
+        GrainParams p = defaultGrains();
+        p.time = 0.4f; p.sizeMs = 400.0f; p.densityHz = 2.0f; p.randomness = 0.0f; p.spread = 0.0f;
+        p.shape = 0.5f; p.reverse = reverse;
+        GrainParams frozen = p;
+        frozen.freeze = true;
+        const auto out = renderGrains(sr, p, 3, sweep, 6.0, 256, &frozen);
+        // Zero-crossing rate in 50 ms windows, compared within each grain.
+        int rising = 0, falling = 0;
+        const size_t w = static_cast<size_t>(sr * 0.05), grain = static_cast<size_t>(sr * 0.5);
+        for (size_t start = sweep.size() + grain; start + grain < out.l.size(); start += grain) {
+            auto zc = [&](size_t a) {
+                int n = 0;
+                for (size_t i = a + 1; i < a + w; ++i)
+                    n += (out.l[i - 1] < 0.0f) != (out.l[i] < 0.0f);
+                return n;
+            };
+            // Find this grain's loud part: compare its two quarters.
+            size_t best = start;
+            double bestE = 0.0;
+            for (size_t a = start; a + 4 * w < start + grain; a += w / 2) {
+                const double e = analysis::rms(out.l, a, a + 4 * w);
+                if (e > bestE) { bestE = e; best = a; }
+            }
+            if (bestE < 1e-3)
+                continue;
+            const int z0 = zc(best), z1 = zc(best + 3 * w);
+            if (z1 > z0 + 1) ++rising;
+            else if (z0 > z1 + 1) ++falling;
+        }
+        INFO("reverse " << reverse << ": rising " << rising << ", falling " << falling);
+        CHECK(rising + falling >= 6);
+        return static_cast<double>(rising) / std::max(1, rising + falling);
+    };
+    CHECK(risingShare(0.0f) > 0.9);
+    CHECK(risingShare(1.0f) < 0.1);
+    const double both = risingShare(0.5f);
+    CHECK(both > 0.15);
+    CHECK(both < 0.85);
+}
+
+TEST_CASE("Grains: switching grains off fades their output and sends the input straight to the reverb")
+{
+    const double sr = 48000.0;
+    GlintEngine e;
+    MacroValues m;
+    m.mix = 1.0f; m.bloom = 0.0f; m.density = 1.0f;
+    m.grainsOn = false;
+    e.setMacros(m);
+    e.prepare(sr, 512);
+    auto l = signals::pink(sr, 3.0, 0.3, 4);
+    auto r = signals::pink(sr, 3.0, 0.3, 5);
+    for (size_t pos = 0; pos < l.size(); pos += 512)
+        e.process(l.data() + pos, r.data() + pos, 512);
+    int grains = 0;
+    GrainEvent ev;
+    while (e.grainEvents().pop(ev))
+        if (ev.level > 0.0f)
+            ++grains;
+    INFO("grain events with grains off: " << grains);
+    CHECK(grains == 0);
+    // The reverb still gets the input.
+    CHECK(analysis::rms(l, static_cast<size_t>(sr), l.size()) > 0.01);
+}

@@ -15,8 +15,9 @@
   their MIT headers. Update THIRD_PARTY_NOTICES.md when porting files.
 - Never use "Mutable Instruments", "Beads" or "Valhalla" in product strings,
   UI text, parameter names or preset names.
-- Only the 11 macros are host parameters. Engine parameters are internal and
-  driven through src/dsp/Macros.h. Don't expose them to the host.
+- Only the 11 macros, the Shimmer/Grains switches and grain Direction are host
+  parameters. Engine parameters are internal and driven through
+  src/dsp/Macros.h. Don't expose them to the host.
 - Parameter IDs are frozen once Phase 4 lands. Bump the state version instead.
 - You can't hear audio. Back every sonic claim with a measurement, and ask me
   to listen at checkpoints, naming the render file and what to listen for.

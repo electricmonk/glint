@@ -62,6 +62,10 @@ void checkNoClicks(const Out& o, const std::string& what)
     std::vector<float> r(o.r.begin() + static_cast<long>(skip), o.r.end());
     const auto cl = analysis::detectClicks(l, kSr);
     const auto cr = analysis::detectClicks(r, kSr);
+    // Diagnostic: the worst residual ratio at any level (the check itself
+    // ignores residual spikes below 0.001 absolute).
+    const auto any = analysis::detectClicks(l, kSr, 12.0, 1e-7);
+    INFO(what << ": worst ratio at any level " << any.worstRatio);
     INFO(what << ": clicks L " << cl.clicks << " (worst ratio " << cl.worstRatio << " at "
               << (static_cast<double>(cl.worstIndex + skip) / kSr) << " s), R " << cr.clicks << " (worst " << cr.worstRatio << ")");
     CHECK(cl.clicks == 0);
@@ -97,6 +101,22 @@ TEST_CASE("Macros: every continuous macro sweeps without clicks")
             checkNoClicks(o, std::string(s.name) + " sweep over " + std::to_string(dur) + " s");
         }
     }
+}
+
+TEST_CASE("Macros: Shimmer and Grains switches and Direction changes are click-free")
+{
+    MacroValues start;
+    start.bloom = 0.8f;
+    start.density = 0.7f;
+    checkNoClicks(render([](MacroValues& m, double t) {
+        m.shimmerOn = (static_cast<int>(t / 0.7) % 2) == 0;
+    }, 4.0, start), "shimmer on/off");
+    checkNoClicks(render([](MacroValues& m, double t) {
+        m.grainsOn = (static_cast<int>(t / 0.7) % 2) == 0;
+    }, 4.0, start), "grains on/off");
+    checkNoClicks(render([](MacroValues& m, double t) {
+        m.direction = static_cast<GrainDirection>(static_cast<int>(t / 0.6) % 3);
+    }, 4.0, start), "direction changes");
 }
 
 TEST_CASE("Macros: switching Shimmer, Texture and Freeze is click-free")
@@ -153,7 +173,12 @@ TEST_CASE("Macros: mapping matches the plan's table")
     CHECK(std::abs(hi.sizeMs - 150.0f) < 1e-2f);
     CHECK(std::abs(hi.randTime - 0.7f) < 1e-5f);
     CHECK(std::abs(hi.pitchJitterSt - 0.3f) < 1e-5f);
-    CHECK(std::abs(hi.reverse - 0.3f) < 1e-5f);
+    CHECK(hi.reverse == 0.0f); // Drift no longer reverses grains; Direction does
+    m.direction = GrainDirection::Both;
+    CHECK(macros::map(m).reverse == 0.5f);
+    m.direction = GrainDirection::Reverse;
+    CHECK(macros::map(m).reverse == 1.0f);
+    m.direction = GrainDirection::Forward;
     CHECK(std::abs(hi.loopHighCutHz - 14000.0f) < 2.0f);
     CHECK(std::abs(hi.dampingHz - 16000.0f) < 2.0f);
     CHECK(std::abs(hi.width - 1.5f) < 1e-5f);
