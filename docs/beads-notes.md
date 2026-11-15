@@ -23,7 +23,7 @@ Files read: `granular_processor.h`, `granular_player.h`, `delay_granular_player.
 | Triggers | `TriggerGenerator`: Poisson-like random pulse train or clocked divider; regularity feeds pan spread | Glint uses its own smoothed Poisson rate (Density macro) and its own pan law (Spread/Stereo density), as PLAN §4 asks |
 | Pan | Random pan width = 0.5 × active grains × total randomness | Replaced by Spread / Stereo density |
 | STM32-specific | `__attribute__((packed))` bitfields, bank-split addressing, `WasteCPUCycles`, CV/ADC/normalisation, calibration, UI | Not ported |
-| Desktop build | Headers compile with clang once `stmlib` is available; no tests ship | — |
+| Desktop build | `beads/dsp/granular_processor.h` passes `clang++ -std=c++11 -fsyntax-only` (0 errors, 7 warnings) with `stmlib` checked out. Not linked or run: the port is standalone and doesn't build the original | — |
 
 ## Port strategy
 
@@ -50,8 +50,8 @@ struct GrainParams {           // targets; smoothed inside the engine
     float shape = 0.5f;        // 0..1 (Beads envelope morph)
     float densityHz = 10.f;    // grain rate
     float randomness = 0.3f;   // 0 regular .. 1 Poisson
-    float randTime = 0.2f, randSize = 0.f, randPitch = 0.f; // 0..1 (pitch: ±0.3 st at 1? no: ±24 st scale)
-    float pitchJitterSt = 0.f; // ± semitones of extra jitter
+    float randTime = 0.2f, randSize = 0.f, randPitch = 0.f; // 0..1 (randPitch scales ±12 st)
+    float pitchJitterSt = 0.f; // ± semitones of extra jitter (Drift)
     float reverse = 0.f;       // probability
     float spread = 0.6f;       // 0..1 pan width
     float stereoDensity = 0.f; // -1 centre .. +1 edges

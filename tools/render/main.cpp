@@ -3,11 +3,12 @@
 //
 //   glint-render case.json [-o out.wav] [--sr 96000] [--seed N]
 //   glint-render --bench [--seconds 30] [--sr 48000] [--block 256] [case.json]
+//   glint-render case.json --preset 2      (start from a factory preset)
 //
 // Case format (all fields optional):
 // {
 //   "sampleRate": 48000, "seconds": 10, "blockSize": 256, "seed": 1,
-//   "input": { "type": "pink|sine|impulse|silence|file", "freq": 440,
+//   "input": { "type": "pink|sine|notes|impulse|silence|file", "freq": 440,
 //              "level": -12, "seconds": 2, "path": "in.wav" },
 //   "macros": { "bloom": 0.6, "shimmer": "octave", "texture": "clean", ... },
 //   "engine": { "feedback": 0.5, "routing": "serial", ... },   // instead of macros
@@ -26,6 +27,7 @@
 #include "../common/Signals.h"
 #include "../common/Wav.h"
 #include "dsp/GlintEngine.h"
+#include "plugin/Presets.h"
 
 using namespace glint;
 
@@ -87,6 +89,7 @@ struct Case {
     double seconds = 10.0;
     int block = 256;
     uint32_t seed = 1;
+    int preset = -1;
 };
 
 std::vector<float> makeInput(const json::Value* in, double sr, double total, uint32_t seed, std::vector<float>* right)
@@ -98,6 +101,7 @@ std::vector<float> makeInput(const json::Value* in, double sr, double total, uin
     std::vector<float> l;
     if (type == "sine") l = signals::sine(sr, secs, in ? in->number("freq", 440.0) : 440.0, amp);
     else if (type == "impulse") l = signals::impulse(sr, secs, amp);
+    else if (type == "notes") l = signals::notes(sr, secs, amp);
     else if (type == "silence") l.assign(static_cast<size_t>(sr * secs), 0.0f);
     else if (type == "file") {
         wav::Audio a;
@@ -126,6 +130,14 @@ int run(const Case& c, const std::string& outPath, bool bench)
     MacroValues macros;
     EngineParams params;
     const bool engineMode = c.root.find("engine") != nullptr;
+    if (c.preset >= 0 && c.preset < static_cast<int>(presets::kFactory.size())) {
+        const auto& p = presets::kFactory[static_cast<size_t>(c.preset)];
+        macros.bloom = p.bloom * 0.01f; macros.space = p.space * 0.01f; macros.density = p.density * 0.01f;
+        macros.drift = p.drift * 0.01f; macros.spread = p.spread * 0.01f; macros.stereoDensity = p.stereoDensity * 0.01f;
+        macros.tone = p.tone * 0.01f; macros.mix = p.mix * 0.01f;
+        macros.shimmer = static_cast<ShimmerInterval>(p.shimmer);
+        macros.texture = p.texture == 1 ? Texture::Tape : (p.texture == 2 ? Texture::Dust : Texture::Clean);
+    }
     if (const auto* m = c.root.find("macros"))
         for (const auto& [k, v] : m->obj)
             if (!applyMacro(macros, k, v)) std::fprintf(stderr, "unknown macro %s\n", k.c_str());
@@ -236,10 +248,12 @@ int main(int argc, char** argv)
     double srOverride = 0.0, secondsOverride = 0.0;
     int blockOverride = 0;
     long seedOverride = -1;
+    int presetOverride = -1;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "-o" && i + 1 < argc) outPath = argv[++i];
         else if (a == "--bench") bench = true;
+        else if (a == "--preset" && i + 1 < argc) presetOverride = std::atoi(argv[++i]);
         else if (a == "--sr" && i + 1 < argc) srOverride = std::atof(argv[++i]);
         else if (a == "--seconds" && i + 1 < argc) secondsOverride = std::atof(argv[++i]);
         else if (a == "--block" && i + 1 < argc) blockOverride = std::atoi(argv[++i]);
@@ -269,6 +283,7 @@ int main(int argc, char** argv)
     if (secondsOverride > 0) c.seconds = secondsOverride;
     if (blockOverride > 0) c.block = blockOverride;
     if (seedOverride >= 0) c.seed = static_cast<uint32_t>(seedOverride);
+    c.preset = presetOverride >= 0 ? presetOverride : static_cast<int>(c.root.number("preset", -1));
     if (outPath.empty() && !bench) outPath = "render.wav";
     return run(c, outPath, bench);
 }

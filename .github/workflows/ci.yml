@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: true   # JUCE + eurorack; eurorack's nested submodules aren't built
       - name: Install tools
         run: |
           brew install ninja cmake
