@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test-validate:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install tools
+        run: |
+          brew install ninja cmake
+          brew install --cask pluginval
+      - name: Configure
+        run: cmake --preset mac-release
+      - name: Build
+        run: cmake --build --preset mac-release
+      - name: Test
+        run: ctest --preset mac-release
+      - name: Validate (auval + pluginval)
+        run: scripts/validate.sh mac-release
