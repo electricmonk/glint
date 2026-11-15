@@ -32,16 +32,14 @@ below are still needed from Shai.
 - **Particle cloud:** each new grain spawns a particle that rises over ~3–4 s,
   so the cloud reads as a field instead of flickering 250 ms dots.
 
+## Checked by Shai
+
+- Listening renders (`scripts/render-listening.sh`): sound OK (2026-11-15).
+
 ## Waiting for Shai
 
 1. Load Glint on a stereo track in Logic (Phase 0 "Done when"), and run the
    Logic checklist in PLAN §7.
-2. Listen to `renders/` (run `scripts/render-listening.sh` to regenerate):
-   - `case-shimmer-sine.wav`: an octave shimmer should climb out of a 440 Hz tone.
-   - `case-bloom-pink.wav`: the tail should sustain after the noise stops at 3 s.
-   - `case-freeze.wav`: the 330 Hz tone keeps playing frozen from 3.5 s to 11 s.
-   - `preset-00..19.wav`: each preset on a plucked phrase. Listen for metallic
-     ringing in long tails, and harshness above Bloom 100 %.
-3. AU manufacturer code `Shyl` and company name "Glint Audio" are placeholders.
-4. Pushing branches / opening PRs on GitHub: not done; waiting for an OK.
-5. Phase 7 signing identities (see table).
+2. AU manufacturer code `Shyl` and company name "Glint Audio" are placeholders.
+3. Opening PRs on GitHub (branches are pushed).
+4. Phase 7 signing identities (see table).
