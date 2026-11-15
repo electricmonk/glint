@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glint — simple</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Space+Grotesk:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#08090B}
+a{color:#9ED8E6}a:hover{color:#C4E9F1}
+button{font-family:inherit}
+button:focus-visible{outline:2px solid #9ED8E6;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 820px; height: 560px; box-sizing: border-box; padding: 24px; background: #0E1014; color: #ECEAE6; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; gap: 16px; border-radius: 14px; overflow: hidden">
+
+  <header style="height: 40px; display: flex; align-items: center; gap: 14px">
+    <span style="font-family: 'Space Grotesk', Inter, sans-serif; font-size: 22px; font-weight: 500; letter-spacing: 0.32em">GLINT</span>
+    <div style="flex: 1"></div>
+    <div style="display: flex; align-items: center; height: 34px; border: 1px solid #252A31; border-radius: 17px">
+      <button aria-label="Previous preset" onClick="{{prevPreset}}" style="width: 34px; height: 34px; border: 0; background: transparent; color: #9CA3AB; font-size: 17px; cursor: pointer">‹</button>
+      <span style="width: 150px; text-align: center; font-size: 13px; font-weight: 500">{{presetName}}</span>
+      <button aria-label="Next preset" onClick="{{nextPreset}}" style="width: 34px; height: 34px; border: 0; background: transparent; color: #9CA3AB; font-size: 17px; cursor: pointer">›</button>
+    </div>
+    <button aria-pressed="{{freezePressed}}" onClick="{{toggleFreeze}}" style="height: 34px; padding: 0 16px; border-radius: 17px; cursor: pointer; font-size: 12px; font-weight: 600; letter-spacing: 0.16em; border: 1px solid {{freezeBorder}}; background: {{freezeBg}}; color: {{freezeFg}}">FREEZE</button>
+  </header>
+
+  <div style="position: relative; height: 180px; border-radius: 12px; background: #0A0C0F; border: 1px solid #1C2026; overflow: hidden">
+    <svg width="100%" height="180" viewBox="0 0 772 180" preserveAspectRatio="none" role="img" aria-label="Grain cloud: particles drift upward, placed left to right by stereo position" style="display: block">
+      <line x1="386" y1="10" x2="386" y2="170" style="stroke: #1F242B; stroke-dasharray: 2 5"></line>
+      <line x1="0" y1="168" x2="772" y2="168" style="stroke: {{accent}}; stroke-width: 1; stroke-opacity: {{horizonO}}"></line>
+      <sc-for list="{{particles}}" as="p" hint-placeholder-count="20">
+        <circle cx="{{p.x}}" cy="{{p.y}}" r="{{p.r}}" style="fill: {{p.fill}}; fill-opacity: {{p.o}}"></circle>
+      </sc-for>
+    </svg>
+    <span style="position: absolute; left: 12px; bottom: 10px; font-size: 11px; color: #8A929B">L</span>
+    <span style="position: absolute; right: 12px; bottom: 10px; font-size: 11px; color: #8A929B">R</span>
+    <span style="position: absolute; left: 12px; top: 10px; font-size: 11px; letter-spacing: 0.14em; color: {{statusColor}}">{{status}}</span>
+  </div>
+
+  <section aria-label="Controls" style="flex: 1; min-height: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px">
+    <sc-for list="{{row}}" as="k" hint-placeholder-count="6">
+      <div style="width: {{k.blockW}}px; display: flex; flex-direction: column; align-items: center; gap: 3px">
+        <button aria-label="{{k.aria}}" onPointerDown="{{k.onDown}}" onPointerMove="{{k.onMove}}" onPointerUp="{{k.onUp}}" onDoubleClick="{{k.onDbl}}" onKeyDown="{{k.onKey}}" style="width: {{k.S}}px; height: {{k.S}}px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: ns-resize; touch-action: none">
+          <svg width="{{k.S}}" height="{{k.S}}" viewBox="{{k.vb}}" aria-hidden="true" style="display: block">
+            <circle cx="{{k.c}}" cy="{{k.c}}" r="{{k.inner}}" style="fill: #171A20; stroke: #2A3038; stroke-width: 1"></circle>
+            <path d="{{k.track}}" style="fill: none; stroke: #1E2329; stroke-width: {{k.sw}}; stroke-linecap: round"></path>
+            <path d="{{k.arc}}" style="fill: none; stroke: {{k.color}}; stroke-width: {{k.sw}}; stroke-linecap: round"></path>
+            <path d="{{k.hot}}" style="fill: none; stroke: #FFF1D0; stroke-width: {{k.sw}}; stroke-linecap: round"></path>
+            <line x1="{{k.x1}}" y1="{{k.y1}}" x2="{{k.x2}}" y2="{{k.y2}}" style="stroke: #ECEAE6; stroke-width: {{k.pw}}; stroke-linecap: round"></line>
+          </svg>
+        </button>
+        <span style="margin-top: 4px; font-family: 'Space Grotesk', Inter, sans-serif; font-size: {{k.lf}}px; line-height: 16px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap">{{k.label}}</span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 15px; color: {{k.color}}; white-space: nowrap">{{k.text}}</span>
+      </div>
+    </sc-for>
+  </section>
+
+  <footer style="height: 56px; display: flex; align-items: flex-end; gap: 20px; border-top: 1px solid #1C2026; padding-top: 12px; box-sizing: border-box">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #9CA3AB">Shimmer</span>
+      <div role="group" aria-label="Shimmer interval" style="display: flex; gap: 4px">
+        <sc-for list="{{intervals}}" as="c" hint-placeholder-count="4">
+          <button aria-pressed="{{c.pressed}}" onClick="{{c.pick}}" style="height: 26px; padding: 0 12px; border-radius: 13px; font-size: 12px; cursor: pointer; border: 1px solid {{c.border}}; background: {{c.bg}}; color: {{c.fg}}">{{c.name}}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #9CA3AB">Texture</span>
+      <div role="group" aria-label="Texture" style="display: flex; gap: 4px">
+        <sc-for list="{{textures}}" as="c" hint-placeholder-count="3">
+          <button aria-pressed="{{c.pressed}}" onClick="{{c.pick}}" style="height: 26px; padding: 0 12px; border-radius: 13px; font-size: 12px; cursor: pointer; border: 1px solid {{c.border}}; background: {{c.bg}}; color: {{c.fg}}">{{c.name}}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="flex: 1"></div>
+    <sc-for list="{{minis}}" as="k" hint-placeholder-count="2">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <button aria-label="{{k.aria}}" onPointerDown="{{k.onDown}}" onPointerMove="{{k.onMove}}" onPointerUp="{{k.onUp}}" onDoubleClick="{{k.onDbl}}" onKeyDown="{{k.onKey}}" style="width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: ns-resize; touch-action: none">
+          <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true" style="display: block">
+            <circle cx="20" cy="20" r="10" style="fill: #171A20; stroke: #2A3038; stroke-width: 1"></circle>
+            <path d="{{k.track}}" style="fill: none; stroke: #1E2329; stroke-width: 3; stroke-linecap: round"></path>
+            <path d="{{k.arc}}" style="fill: none; stroke: {{k.color}}; stroke-width: 3; stroke-linecap: round"></path>
+            <line x1="{{k.x1}}" y1="{{k.y1}}" x2="{{k.x2}}" y2="{{k.y2}}" style="stroke: #ECEAE6; stroke-width: 2; stroke-linecap: round"></line>
+          </svg>
+        </button>
+        <div style="display: flex; flex-direction: column; gap: 1px; width: 64px">
+          <span style="font-size: 11px; line-height: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: #9CA3AB">{{k.label}}</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 14px; color: #ECEAE6; white-space: nowrap">{{k.text}}</span>
+        </div>
+      </div>
+    </sc-for>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#EBC77A","options":["#EBC77A","#F2A97E","#D9C2F0","#BFE3C9"],"section":"Look"},"grainColor":{"editor":"color","default":"#9ED8E6","options":["#9ED8E6","#C9D3FF","#E6E2DA","#A8E0C4"],"section":"Look"},"$preview":{"width":820,"height":560}}'>
+var DEFS = {
+  den: { label: 'Density', min: 0, max: 100, def: 45, unit: '%' },
+  drift: { label: 'Drift', min: 0, max: 100, def: 35, unit: '%' },
+  bloom: { label: 'Bloom', min: 0, max: 110, def: 60, unit: '%', hot: 100 },
+  space: { label: 'Space', min: 0, max: 100, def: 65 },
+  spr: { label: 'Spread', min: 0, max: 100, def: 70, unit: '%' },
+  sden: { label: 'Centre · Edges', min: -100, max: 100, def: 0, bipolar: true },
+  tone: { label: 'Tone', min: -100, max: 100, def: 0, bipolar: true },
+  mix: { label: 'Mix', min: 0, max: 100, def: 35, unit: '%' }
+};
+var PRESETS = [
+  { name: 'Halo', v: {} },
+  { name: 'Night Choir', v: { bloom: 85, space: 85, den: 30, drift: 50, spr: 80, sden: -30, tone: -30, mix: 50 }, interval: 'Sub + Oct' },
+  { name: 'Cathedral Snow', v: { bloom: 104, space: 95, den: 70, drift: 40, spr: 100, sden: 60, tone: 25, mix: 60 }, interval: 'Oct + 5th' },
+  { name: 'Tape Ghosts', v: { bloom: 45, space: 55, den: 55, drift: 70, spr: 75, sden: 20, tone: -45, mix: 45 }, texture: 'Tape' },
+  { name: 'Dust Halo', v: { bloom: 70, space: 75, den: 85, drift: 60, spr: 90, sden: 40, tone: -15, mix: 40 }, texture: 'Dust', interval: 'Fifth' }
+];
+var INTERVALS = ['Octave', 'Fifth', 'Oct + 5th', 'Sub + Oct'];
+var TEXTURES = ['Clean', 'Tape', 'Dust'];
+
+function defaults() { var o = {}; Object.keys(DEFS).forEach(function (k) { o[k] = DEFS[k].def; }); return o; }
+function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+function hash(n) { var s = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return s - Math.floor(s); }
+function pt(c, r, a) { var rad = (a - 90) * Math.PI / 180; return [c + r * Math.cos(rad), c + r * Math.sin(rad)]; }
+function arc(c, r, a0, a1) {
+  if (a1 - a0 < 0.5) return '';
+  var p0 = pt(c, r, a0), p1 = pt(c, r, a1);
+  return 'M' + p0[0].toFixed(2) + ' ' + p0[1].toFixed(2) + ' A' + r + ' ' + r + ' 0 ' + (a1 - a0 > 180 ? 1 : 0) + ' 1 ' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2);
+}
+function fmt(id, v) {
+  var r = Math.round(v);
+  if (id === 'space') { var s = 1.5 * Math.pow(20, v / 100); return (s < 10 ? s.toFixed(1) : Math.round(s)) + ' s tail'; }
+  if (id === 'sden') return r < 0 ? 'centre ' + (-r) : (r > 0 ? 'edges ' + r : 'even');
+  if (id === 'tone') return r < 0 ? 'dark ' + (-r) : (r > 0 ? 'bright ' + r : 'neutral');
+  if (id === 'bloom' && v > 100) return 'bloom ' + r + '%';
+  return r + '%';
+}
+var SIZES = {
+  xl: { S: 112, r: 47, inner: 34, sw: 7, p0: 8, p1: 26, pw: 3.5, lf: 15, blockW: 150 },
+  lg: { S: 72, r: 30, inner: 21, sw: 5, p0: 4, p1: 15, pw: 3, lf: 12, blockW: 108 },
+  md: { S: 52, r: 21, inner: 14, sw: 4, p0: 3, p1: 10, pw: 2.5, lf: 11, blockW: 120 },
+  sm: { S: 40, r: 15, inner: 10, sw: 3, p0: 2, p1: 7.5, pw: 2, lf: 11, blockW: 64 }
+};
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { vals: defaults(), preset: 0, interval: 'Octave', texture: 'Clean', freeze: false, tick: 0 };
+    this.drag = null;
+  }
+  componentDidMount() {
+    var self = this;
+    this.iv = setInterval(function () { self.setState({ tick: self.state.tick + 1 }); }, 50);
+  }
+  componentWillUnmount() { clearInterval(this.iv); }
+  setVal(id, x) { this.setState(function (s) { var v = Object.assign({}, s.vals); v[id] = x; return { vals: v }; }); }
+  loadPreset(i) {
+    var p = PRESETS[i];
+    this.setState({ preset: i, vals: Object.assign(defaults(), p.v), interval: p.interval || 'Octave', texture: p.texture || 'Clean' });
+  }
+  knob(id, size, color) {
+    var self = this, d = DEFS[id], val = this.state.vals[id], z = SIZES[size];
+    var c = z.S / 2, n = (val - d.min) / (d.max - d.min), ang = -135 + 270 * n;
+    var a = '', hot = '';
+    if (d.bipolar) a = ang >= 0 ? arc(c, z.r, 0, ang) : arc(c, z.r, ang, 0);
+    else if (d.hot != null && val > d.hot) {
+      var aH = -135 + 270 * ((d.hot - d.min) / (d.max - d.min));
+      a = arc(c, z.r, -135, aH); hot = arc(c, z.r, aH, ang);
+    } else a = arc(c, z.r, -135, ang);
+    var q0 = pt(c, z.p0, ang), q1 = pt(c, z.p1, ang);
+    return {
+      label: d.label, text: fmt(id, val), color: color, aria: d.label + ' ' + fmt(id, val),
+      S: z.S, vb: '0 0 ' + z.S + ' ' + z.S, c: c, inner: z.inner, sw: z.sw, pw: z.pw, lf: z.lf, blockW: z.blockW,
+      track: arc(c, z.r, -135, 135), arc: a, hot: hot,
+      x1: q0[0].toFixed(2), y1: q0[1].toFixed(2), x2: q1[0].toFixed(2), y2: q1[1].toFixed(2),
+      onDown: function (e) { try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} self.drag = { id: id, y: e.clientY, v: self.state.vals[id] }; },
+      onMove: function (e) {
+        var dr = self.drag; if (!dr || dr.id !== id) return;
+        var k = e.shiftKey ? 0.15 : 1;
+        self.setVal(id, clamp(dr.v + (dr.y - e.clientY) / 170 * (d.max - d.min) * k, d.min, d.max));
+      },
+      onUp: function () { self.drag = null; },
+      onDbl: function () { self.setVal(id, d.def); },
+      onKey: function (e) {
+        var step = (d.max - d.min) / 100 * (e.shiftKey ? 10 : 1), cur = self.state.vals[id];
+        if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); self.setVal(id, clamp(cur + step, d.min, d.max)); }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); self.setVal(id, clamp(cur - step, d.min, d.max)); }
+      }
+    };
+  }
+  chips(list, key) {
+    var self = this;
+    return list.map(function (name) {
+      var on = self.state[key] === name;
+      return { name: name, pressed: on ? 'true' : 'false', bg: on ? '#232830' : 'transparent', fg: on ? '#ECEAE6' : '#9CA3AB',
+        border: on ? '#3A414B' : '#252A31', pick: function () { var o = {}; o[key] = name; self.setState(o); } };
+    });
+  }
+  renderVals() {
+    var self = this;
+    var accent = this.props.accent ?? '#EBC77A';
+    var grainColor = this.props.grainColor ?? '#9ED8E6';
+    var soft = '#C9CED6';
+    var v = this.state.vals, t = this.state.tick, freeze = this.state.freeze;
+
+    var VW = 772, VH = 180;
+    var n = Math.round(v.den / 100 * 44);
+    var k = Math.pow(4, -v.sden / 100);
+    var particles = [];
+    for (var i = 0; i < n; i++) {
+      var speed = (0.006 + 0.006 * hash(i * 1.9)) * (freeze ? 0.5 : 1);
+      var ph = t * speed + hash(i * 3.7);
+      var cyc = Math.floor(ph), p = ph - cyc;
+      var seed = i * 131.1 + cyc * 977.3;
+      var u = hash(seed + 1.3) * 2 - 1;
+      var pan = (u < 0 ? -1 : 1) * Math.pow(Math.abs(u), k) * (v.spr / 100);
+      var x = VW / 2 + pan * (VW / 2 - 28) + Math.sin(t * 0.04 + i) * (v.drift / 100) * 16;
+      var y = VH - 16 - p * (VH - 32);
+      var shimmer = !freeze && hash(seed + 5.1) < (v.bloom / 110) * 0.45;
+      particles.push({
+        x: x.toFixed(1), y: y.toFixed(1),
+        r: (1.6 + hash(seed + 4.2) * 2.6 + v.space / 100 * 1.6).toFixed(1),
+        o: (Math.sin(Math.PI * p) * (0.35 + 0.6 * hash(seed + 6.3))).toFixed(2),
+        fill: shimmer ? accent : grainColor
+      });
+    }
+    var bloom = v.bloom > 100;
+    return {
+      accent: accent,
+      presetName: PRESETS[this.state.preset].name,
+      prevPreset: function () { self.loadPreset((self.state.preset + PRESETS.length - 1) % PRESETS.length); },
+      nextPreset: function () { self.loadPreset((self.state.preset + 1) % PRESETS.length); },
+      freezePressed: freeze ? 'true' : 'false',
+      freezeBg: freeze ? grainColor : 'transparent', freezeFg: freeze ? '#0E1014' : '#C9CED6', freezeBorder: freeze ? grainColor : '#2A3038',
+      particles: particles,
+      horizonO: (0.08 + (v.bloom / 110) * 0.5).toFixed(2),
+      status: freeze ? 'FROZEN' : (bloom ? 'BLOOMING' : ''),
+      statusColor: freeze ? grainColor : accent,
+      row: [
+        self.knob('den', 'lg', grainColor),
+        self.knob('drift', 'lg', grainColor),
+        self.knob('bloom', 'xl', accent),
+        self.knob('space', 'lg', soft),
+        self.knob('spr', 'lg', soft),
+        self.knob('sden', 'md', soft)
+      ],
+      intervals: self.chips(INTERVALS, 'interval'),
+      textures: self.chips(TEXTURES, 'texture'),
+      minis: [self.knob('tone', 'sm', soft), self.knob('mix', 'sm', soft)]
+    };
+  }
+}
+</script>
+</body>
+</html>
