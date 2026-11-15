@@ -76,6 +76,15 @@ void GrainEngine::reset(uint32_t seed) noexcept
     grainsStarted_ = 0;
 }
 
+void GrainEngine::softReset() noexcept
+{
+    buffer_.recorded = 0;
+    tailWrite_ = tailXfade_ = 0;
+    wasFrozen_ = false;
+    pool_.reset(static_cast<float>(sampleRate_));
+    phase_ = 0.0;
+}
+
 void GrainEngine::setParams(const GrainParams& p) noexcept
 {
     params_ = p;
@@ -129,7 +138,9 @@ void GrainEngine::spawnGrain(float fractional) noexcept
     const bool shimmer = rng_.uniform() < shimmerShare_;
     const float shape = infinite ? 0.66f : std::clamp(p.shape, 0.0f, 1.0f);
 
-    pool_.newGrain()->start(buffer_, delay, speed, duration, shape, amplitude, pan, fractional, shimmer);
+    auto* grain = pool_.newGrain();
+    grain->start(buffer_, delay, speed, duration, shape, amplitude, pan, fractional, shimmer);
+    grain->setId(static_cast<uint32_t>(grainsStarted_ + 1));
     pool_.sort();
     ++grainsStarted_;
 }
@@ -179,9 +190,9 @@ void GrainEngine::pushEvents() noexcept
     for (const auto& g : pool_.grains()) {
         if (g.done())
             continue;
-        fifo_->push(GrainEvent { std::clamp(g.panUnit() * width, -1.0f, 1.0f), g.age01(), g.level(), g.shimmer() });
+        fifo_->push(GrainEvent { std::clamp(g.panUnit() * width, -1.0f, 1.0f), g.age01(), g.level(), g.shimmer(), g.id() });
     }
-    fifo_->push(GrainEvent { 0.0f, 0.0f, -1.0f, false });
+    fifo_->push(GrainEvent { 0.0f, 0.0f, -1.0f, false, 0 });
 }
 
 void GrainEngine::process(const float* writeL, const float* writeR, float* outL, float* outR, int n) noexcept

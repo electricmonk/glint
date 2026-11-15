@@ -16,18 +16,32 @@ class Color {
 public:
     void prepare(double sampleRate);
     void reset() noexcept;
-    void setTexture(Texture t) noexcept { texture_ = t; }
+    // Texture changes crossfade over ~20 ms (no step printed into the buffer).
+    void setTexture(Texture t) noexcept
+    {
+        if (t != texture_ && xfade_ <= 0) {
+            previous_ = texture_;
+            texture_ = t;
+            xfade_ = xfadeLen_;
+        } else if (t != texture_) {
+            texture_ = t; // retarget mid-fade; previous_ keeps fading out
+        }
+    }
     Texture texture() const noexcept { return texture_; }
     void process(float& l, float& r) noexcept;
 
 private:
     double sampleRate_ = 48000.0;
     Texture texture_ = Texture::Clean;
+    Texture previous_ = Texture::Clean;
+    int xfade_ = 0;
+    int xfadeLen_ = 960;
+    void render(Texture t, float& l, float& r) noexcept;
     Rng rng_ { 0xC0105u };
 
     // Tape / Dust tone
     float lpCoeffTape_ = 0.5f, lpCoeffDust_ = 0.4f;
-    OnePoleLP lpL_, lpR_;
+    OnePoleLP lpL_, lpR_, dustL_, dustR_;
 
     // Digital: sample-and-hold decimation
     int holdCounter_ = 0;

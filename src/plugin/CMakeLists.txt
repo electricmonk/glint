@@ -23,19 +23,36 @@ juce_add_plugin(Glint
 target_sources(Glint PRIVATE
     PluginProcessor.cpp
     PluginEditor.cpp
+    ParameterLayout.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/Theme.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/Knob.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/Controls.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/ParticleCloud.cpp
 )
+target_include_directories(Glint PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+juce_add_binary_data(GlintBinaryData SOURCES
+    ${CMAKE_SOURCE_DIR}/resources/fonts/space-grotesk-500.ttf
+    ${CMAKE_SOURCE_DIR}/resources/fonts/space-grotesk-600.ttf
+    ${CMAKE_SOURCE_DIR}/resources/fonts/inter-400.ttf
+    ${CMAKE_SOURCE_DIR}/resources/fonts/inter-500.ttf
+    ${CMAKE_SOURCE_DIR}/resources/fonts/inter-600.ttf
+    ${CMAKE_SOURCE_DIR}/resources/fonts/jetbrains-mono-400.ttf
+    ${CMAKE_SOURCE_DIR}/resources/fonts/jetbrains-mono-500.ttf
+)
+set_target_properties(GlintBinaryData PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_compile_definitions(Glint PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
-    JUCE_DISPLAY_SPLASH_SCREEN=0
     JUCE_REPORT_APP_USAGE=0
 )
 
 target_link_libraries(Glint
     PRIVATE
         glint_dsp
+        GlintBinaryData
         juce::juce_audio_utils
         juce::juce_dsp
     PUBLIC

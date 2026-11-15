@@ -52,11 +52,11 @@ private:
     std::array<float, kLines> state_ {};
     ModBank<kLines> mod_;
     Smoother sizeSmooth_;
+    Smoother modDepthSmooth_; // per-sample, in samples
     float dampCoeff_ = 0.5f;
     float makeup_ = 1.0f;
     float loopNorm_ = 1.0f;
     float gainScale_ = 1.0f;
-    float modDepthSamples_ = 0.0f;
     int controlCounter_ = 0;
 };
 

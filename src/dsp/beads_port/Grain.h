@@ -36,6 +36,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 
 #include "dsp/beads_port/GrainEnvelope.h"
 
@@ -149,6 +150,8 @@ public:
     float age01() const noexcept { return std::min(1.0f, static_cast<float>(age_) / duration_); }
     float level() const noexcept { return lastEnv_ * gain_; }
     bool shimmer() const noexcept { return shimmer_; }
+    void setId(uint32_t id) noexcept { id_ = id; }
+    uint32_t id() const noexcept { return id_; }
 
     static bool compare(const Grain* a, const Grain* b) noexcept { return a->remaining_ < b->remaining_; }
 
@@ -165,6 +168,7 @@ private:
     int remaining_ = 0;
     int age_ = 0;
     bool shimmer_ = false;
+    uint32_t id_ = 0;
 };
 
 // Grain pool with Beads' voice-stealing scheduler.

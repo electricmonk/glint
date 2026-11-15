@@ -50,3 +50,14 @@ Glint is licensed under the GNU Affero General Public License v3.0 or later
 
 - Source: https://github.com/catchorg/Catch2 (v3.16.1)
 - Licence: Boost Software License 1.0
+
+## Fonts (bundled as BinaryData)
+
+- Space Grotesk — Copyright 2020 The Space Grotesk Project Authors — SIL Open Font License 1.1
+  (`resources/fonts/OFL-spacegrotesk.txt`)
+- Inter — Copyright 2020 The Inter Project Authors — SIL Open Font License 1.1
+  (`resources/fonts/OFL-inter.txt`)
+- JetBrains Mono — Copyright 2020 The JetBrains Mono Project Authors — SIL Open Font License 1.1
+  (`resources/fonts/OFL-jetbrainsmono.txt`)
+
+Latin subsets of the static instances, via Fontsource.

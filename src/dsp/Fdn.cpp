@@ -43,6 +43,7 @@ void Fdn::prepare(double sampleRate)
     }
     mod_.prepare(sampleRate, 0xF0D5u);
     sizeSmooth_.prepare(sampleRate, 250.0f);
+    modDepthSmooth_.prepare(sampleRate, 60.0f);
     sizeSmooth_.snap(settings_.size);
     reset();
     updateCoefficients();
@@ -56,6 +57,7 @@ void Fdn::reset() noexcept
     mod_.prepare(sampleRate_, 0xF0D5u);
     mod_.setRate(settings_.modRateHz);
     sizeSmooth_.snap(settings_.size);
+    modDepthSmooth_.snap(std::clamp(settings_.modDepth, 0.0f, 1.0f) * kMaxModMs * 0.001f * static_cast<float>(sampleRate_));
     controlCounter_ = 0;
 }
 
@@ -94,7 +96,7 @@ void Fdn::updateCoefficients() noexcept
     const double gAvg2 = gSum2 / kLines;
     loopNorm_ = static_cast<float>(std::pow(std::max(1e-6, 1.0 - gAvg2), 0.25));
     makeup_ = 1.0f;
-    modDepthSamples_ = std::clamp(settings_.modDepth, 0.0f, 1.0f) * kMaxModMs * 0.001f * static_cast<float>(sampleRate_);
+    modDepthSmooth_.setTarget(std::clamp(settings_.modDepth, 0.0f, 1.0f) * kMaxModMs * 0.001f * static_cast<float>(sampleRate_));
 }
 
 void Fdn::process(float inL, float inR, float& outL, float& outR) noexcept
@@ -109,9 +111,10 @@ void Fdn::process(float inL, float inR, float& outL, float& outR) noexcept
     mod_.tick(m);
 
     const float scale = 0.25f + 0.75f * sizeSmooth_.value();
+    const float modDepthSamples = modDepthSmooth_.next();
     std::array<float, kLines> y;
     for (size_t i = 0; i < kLines; ++i) {
-        const float len = baseLen_[i] * scale + modDepthSamples_ * (1.0f + m[i]) + 1.0f;
+        const float len = baseLen_[i] * scale + modDepthSamples * (1.0f + m[i]) + 1.0f;
         y[i] = lines_[i].readHermite(len);
     }
 

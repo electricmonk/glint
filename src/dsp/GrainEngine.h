@@ -41,6 +41,9 @@ public:
     void prepare(double sampleRate, double maxBufferSeconds = 16.0);
     void reset(uint32_t seed = 1) noexcept;
     void setParams(const GrainParams& p) noexcept;
+    // Forget the recording without clearing memory (cheap on the audio thread):
+    // new grains only read what is recorded from now on.
+    void softReset() noexcept;
 
     // Fraction (0..1) of the recorded signal that comes from the shimmer loop;
     // only used to colour particles in the visualiser.

@@ -177,42 +177,75 @@ inline double correlation(const std::vector<float>& a, const std::vector<float>&
     return (saa > 0 && sbb > 0) ? sab / std::sqrt(saa * sbb) : 0.0;
 }
 
-// Click detector: flags samples whose second difference jumps far above the
-// local (50 ms) RMS of the second difference. Returns number of clicks found.
+// Click detector based on linear prediction: in windows of 2048 samples an
+// order-24 LPC model is fitted (autocorrelation + Levinson-Durbin); a click is
+// a prediction-error sample far above the window's robust error level (median
+// absolute deviation). Steps, gain jumps and dropouts all show up as residual
+// spikes; noise, grains and reverb tails are predictable enough not to.
 struct ClickReport {
     size_t clicks = 0;
     double worstRatio = 0.0;
     size_t worstIndex = 0;
 };
 
-inline ClickReport detectClicks(const std::vector<float>& x, double sr, double ratioThreshold = 12.0, double absThreshold = 0.02)
+inline ClickReport detectClicks(const std::vector<float>& x, double sr, double ratioThreshold = 12.0, double absThreshold = 0.001)
 {
     ClickReport rep;
-    const size_t n = x.size();
-    if (n < 4) return rep;
-    std::vector<float> d(n, 0.0f);
-    for (size_t i = 2; i < n; ++i) d[i] = x[i] - 2.0f * x[i - 1] + x[i - 2];
-    const size_t win = std::max<size_t>(16, static_cast<size_t>(sr * 0.05));
-    double acc = 0.0;
-    std::vector<double> sq(n);
-    for (size_t i = 0; i < n; ++i) sq[i] = static_cast<double>(d[i]) * d[i];
-    // Centered moving RMS.
-    std::vector<double> prefix(n + 1, 0.0);
-    for (size_t i = 0; i < n; ++i) prefix[i + 1] = prefix[i] + sq[i];
+    constexpr int order = 24;
+    const size_t win = 2048, hop = 1024;
+    if (x.size() < win) return rep;
+    std::vector<double> w(win), r(order + 1), a(order + 1), tmp(order + 1);
+    std::vector<double> resid(hop);
     size_t lastClick = 0;
-    for (size_t i = 2; i < n; ++i) {
-        const size_t a = i > win ? i - win : 0;
-        const size_t b = std::min(n, i + win);
-        acc = (prefix[b] - prefix[a]) / static_cast<double>(b - a);
-        const double local = std::sqrt(acc) + 1e-9;
-        const double ratio = std::fabs(d[i]) / local;
-        if (std::fabs(d[i]) > absThreshold && ratio > ratioThreshold) {
-            if (rep.clicks == 0 || i - lastClick > win) ++rep.clicks;
-            lastClick = i;
+    const size_t minGap = static_cast<size_t>(sr * 0.05);
+    for (size_t start = 0; start + win <= x.size(); start += hop) {
+        for (size_t i = 0; i < win; ++i) {
+            const double hann = 0.5 - 0.5 * std::cos(2.0 * kPi * static_cast<double>(i) / static_cast<double>(win - 1));
+            w[i] = x[start + i] * hann;
         }
-        if (ratio > rep.worstRatio && std::fabs(d[i]) > absThreshold) {
-            rep.worstRatio = ratio;
-            rep.worstIndex = i;
+        for (int k = 0; k <= order; ++k) {
+            double acc = 0.0;
+            for (size_t i = static_cast<size_t>(k); i < win; ++i) acc += w[i] * w[i - static_cast<size_t>(k)];
+            r[static_cast<size_t>(k)] = acc;
+        }
+        if (r[0] <= 1e-12) continue;
+        r[0] *= 1.0 + 1e-9; // tiny regularisation
+        std::fill(a.begin(), a.end(), 0.0);
+        a[0] = 1.0;
+        double err = r[0];
+        for (int i = 1; i <= order; ++i) {
+            double acc = r[static_cast<size_t>(i)];
+            for (int j = 1; j < i; ++j) acc += a[static_cast<size_t>(j)] * r[static_cast<size_t>(i - j)];
+            const double k = -acc / err;
+            tmp = a;
+            for (int j = 1; j < i; ++j) a[static_cast<size_t>(j)] = tmp[static_cast<size_t>(j)] + k * tmp[static_cast<size_t>(i - j)];
+            a[static_cast<size_t>(i)] = k;
+            err *= (1.0 - k * k);
+            if (err <= 0.0) break;
+        }
+        // Residual over the central hop of the window.
+        const size_t c0 = start + (win - hop) / 2;
+        for (size_t n = 0; n < hop; ++n) {
+            const size_t idx = c0 + n;
+            double e = x[idx];
+            for (int k = 1; k <= order; ++k) e += a[static_cast<size_t>(k)] * x[idx - static_cast<size_t>(k)];
+            resid[n] = e;
+        }
+        std::vector<double> mags(hop);
+        for (size_t n = 0; n < hop; ++n) mags[n] = std::fabs(resid[n]);
+        std::nth_element(mags.begin(), mags.begin() + static_cast<long>(hop / 2), mags.end());
+        const double sigma = mags[hop / 2] * 1.4826 + 1e-9;
+        for (size_t n = 0; n < hop; ++n) {
+            const double m = std::fabs(resid[n]);
+            const double ratio = m / sigma;
+            if (m > absThreshold && ratio > rep.worstRatio) {
+                rep.worstRatio = ratio;
+                rep.worstIndex = c0 + n;
+            }
+            if (m > absThreshold && ratio > ratioThreshold) {
+                if (rep.clicks == 0 || c0 + n - lastClick > minGap) ++rep.clicks;
+                lastClick = c0 + n;
+            }
         }
     }
     return rep;

@@ -4,6 +4,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 
 namespace glint {
 
@@ -13,6 +14,7 @@ struct GrainEvent {
     float age = 0.0f;    // 0 (just born) .. 1 (end of life)
     float level = 0.0f;  // envelope x gain; < 0 marks end of a frame
     bool shimmer = false;
+    uint32_t id = 0;     // unique per grain (start order)
 };
 
 // Single-producer / single-consumer lock-free ring buffer.

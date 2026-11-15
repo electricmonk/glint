@@ -26,6 +26,8 @@ void GlintEngine::prepare(double sampleRate, int maxBlockSize)
     for (size_t i = 0; i < macroSmooth_.size(); ++i)
         macroSmooth_[i].prepare(sampleRate, kMacroMs[i]);
     mix_.prepare(sampleRate, 20.0f);
+    wetGate_.prepare(sampleRate, 8.0f);
+    wetGate_.snap(1.0f);
     preDelay_.prepare(sampleRate, 150.0f);
     direct_.prepare(sampleRate, 50.0f);
     gil_.prepare(sampleRate, 80.0f);
@@ -61,6 +63,22 @@ void GlintEngine::reset(uint32_t seed) noexcept
     reverbLevel_.snap(dbToGain(current_.reverbLevelDb));
     inGain_.snap(dbToGain(current_.inputGainDb));
     outGain_.snap(dbToGain(current_.outputGainDb));
+}
+
+void GlintEngine::resumeAfterGap() noexcept
+{
+    grains_.softReset();
+    diffuser_.reset();
+    fdn_.reset();
+    shimmer_.reset();
+    loopL_ = loopR_ = 0.0f;
+    retL_.fill(0.0f);
+    retR_.fill(0.0f);
+    // Bypass was fully dry: glide from Mix 0 to the current Mix.
+    const float mixTarget = mix_.target();
+    mix_.snap(0.0f);
+    mix_.setTarget(mixTarget);
+    rampInWet();
 }
 
 void GlintEngine::setMacros(const MacroValues& m) noexcept
@@ -205,7 +223,7 @@ void GlintEngine::process(float* left, float* right, int numSamples) noexcept
             float wetL = vl * rv + grainL_[k] * gv;
             float wetR = vr * rv + grainR_[k] * gv;
             shimmer_.setDetectLevel(std::max(std::fabs(wetL), std::fabs(wetR)));
-            const float lim = shimmer_.limiterGain();
+            const float lim = shimmer_.limiterGain() * wetGate_.next();
             wetL *= lim;
             wetR *= lim;
 

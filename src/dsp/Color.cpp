@@ -21,6 +21,7 @@ void Color::prepare(double sampleRate)
     sampleRate_ = sampleRate;
     lpCoeffTape_ = onePoleCoeff(11000.0f, sampleRate);
     lpCoeffDust_ = onePoleCoeff(7000.0f, sampleRate);
+    xfadeLen_ = std::max(1, static_cast<int>(sampleRate * 0.02));
 
     // Wow/flutter delay line: up to ~12 ms.
     int size = 1;
@@ -41,7 +42,11 @@ void Color::reset() noexcept
 {
     lpL_.reset();
     lpR_.reset();
+    dustL_.reset();
+    dustR_.reset();
     hissLP_.reset();
+    xfade_ = 0;
+    previous_ = texture_;
     holdCounter_ = 0;
     heldL_ = heldR_ = 0.0f;
     std::fill(wfL_.begin(), wfL_.end(), 0.0f);
@@ -55,7 +60,31 @@ void Color::reset() noexcept
 
 void Color::process(float& l, float& r) noexcept
 {
-    switch (texture_) {
+    // Every mode's state runs on every sample, so switching (or coming back
+    // to) a mode never starts from stale filter or delay-line contents.
+    float out[4][2];
+    out[0][0] = l; out[0][1] = r;
+    for (int m = 1; m < 4; ++m) {
+        out[m][0] = l;
+        out[m][1] = r;
+        render(static_cast<Texture>(m), out[m][0], out[m][1]);
+    }
+    const auto& cur = out[static_cast<int>(texture_)];
+    if (xfade_ > 0) {
+        const auto& prev = out[static_cast<int>(previous_)];
+        const float t = 1.0f - static_cast<float>(xfade_) / static_cast<float>(xfadeLen_);
+        l = prev[0] + (cur[0] - prev[0]) * t;
+        r = prev[1] + (cur[1] - prev[1]) * t;
+        --xfade_;
+        return;
+    }
+    l = cur[0];
+    r = cur[1];
+}
+
+void Color::render(Texture t, float& l, float& r) noexcept
+{
+    switch (t) {
     case Texture::Clean:
         return;
 
@@ -101,15 +130,12 @@ void Color::process(float& l, float& r) noexcept
         r = wfR_[static_cast<size_t>(i0)] + frac * (wfR_[static_cast<size_t>(i1)] - wfR_[static_cast<size_t>(i0)]);
         wfWrite_ = (wfWrite_ + 1) & wfMask_;
 
-        // Soft tape-ish tone and faint hiss (about -66 dBFS) with rare crackle.
-        l = lpL_.process(tapeSat(l), lpCoeffDust_);
-        r = lpR_.process(tapeSat(r), lpCoeffDust_);
+        // Soft tape-ish tone and a faint hiss (about -66 dBFS).
+        l = dustL_.process(tapeSat(l), lpCoeffDust_);
+        r = dustR_.process(tapeSat(r), lpCoeffDust_);
         const float hiss = hissLP_.process(rng_.bipolar(), 0.35f) * 0.0009f;
-        float crackle = 0.0f;
-        if (rng_.uniform() < 1.5e-5f)
-            crackle = rng_.bipolar() * 0.02f;
-        l += hiss + crackle;
-        r += hiss * 0.8f - crackle * 0.5f + rng_.bipolar() * 0.0002f;
+        l += hiss;
+        r += hiss * 0.8f + rng_.bipolar() * 0.0002f;
         return;
     }
     }

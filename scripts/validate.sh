@@ -34,7 +34,7 @@ for fmt in VST3 AU; do
     AU)   BUNDLE="$ARTEFACTS/AU/Glint.component" ;;
   esac
   echo "== pluginval $fmt (strictness 10)"
-  "$PLUGINVAL" --strictness-level 10 --validate-in-process --skip-gui-tests \
+  "$PLUGINVAL" --strictness-level 10 --validate-in-process \
     --output-dir "$ROOT/build/$PRESET/pluginval-$fmt" --validate "$BUNDLE" \
     > "$ROOT/build/$PRESET/pluginval-$fmt.log" 2>&1 || {
       tail -n 40 "$ROOT/build/$PRESET/pluginval-$fmt.log"; echo "pluginval $fmt FAILED"; exit 1; }
