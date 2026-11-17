@@ -195,7 +195,7 @@ rest of its curve to infinite hold.
 | Drift | 0–100% | 35% | Random time 10→70%; pitch jitter 0→±0.3 st; reverb Mod depth 15→70% |
 | Spread | 0–100% | 70% | Grain pan width; reverb Width 80→150% |
 | Stereo density | −100 to +100% | 0 (even) | Pan distribution inside Spread: centre ↔ edges |
-| Tone | −100 to +100% | 0 | Loop high cut 3→14 kHz; Damping 4→16 kHz |
+| Tone | −100 to +100% | 0 | Loop high cut 2→9 kHz; Damping 3→12 kHz (neutral: wet centroid ~12% below the dry piano) |
 | Shimmer | Octave / Fifth / Oct + 5th / Sub + Oct | Octave | Shift A, Shift B, B level: +12 · +7 · +12 and +19 · −12 and +12 |
 | Texture | Clean / Tape / Dust | Clean | Colour mode |
 | Mix | 0–100% | 35% | Dry/wet, constant-power |

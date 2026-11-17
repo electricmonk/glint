@@ -1,0 +1,3 @@
+{ "sampleRate": 48000, "seconds": 16, "seed": 1,
+  "input": { "type": "piano", "level": -6, "seconds": 7 },
+  "macros": { "mix": 0.5, "tone": 1 } }

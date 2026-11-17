@@ -107,10 +107,10 @@ inline EngineParams map(const MacroValues& m) noexcept
     p.width = lerp(0.8f, 1.5f, p.spread);
     p.stereoDensity = std::clamp(m.stereoDensity, -1.0f, 1.0f);
 
-    // Tone: loop high cut 3->14 kHz, damping 4->16 kHz.
+    // Tone: loop high cut 2->9 kHz, damping 3->12 kHz (neutral sits slightly darker than the dry signal).
     const float t = (std::clamp(m.tone, -1.0f, 1.0f) + 1.0f) * 0.5f;
-    p.loopHighCutHz = expLerp(3000.0f, 14000.0f, t);
-    p.dampingHz = expLerp(4000.0f, 16000.0f, t);
+    p.loopHighCutHz = expLerp(2000.0f, 9000.0f, t);
+    p.dampingHz = expLerp(3000.0f, 12000.0f, t);
     p.loopLowCutHz = kLoopLowCutHz;
 
     // Shimmer interval.

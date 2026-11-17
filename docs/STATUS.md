@@ -66,6 +66,20 @@ anything above 60% was almost unusable; Direction should be a knob.
 - **Direction** is a 0–100% knob (share of grains reversed), state
   version 3; version-2 states map Forward/Both/Reverse to 0/50/100%.
 
+## Tone recentred (2026-11-17, branch shimmer-v2)
+
+Shai: the dark/bright knob leans too far to the bright side.
+
+- Loop high cut 3→14 kHz became 2→9 kHz; damping 4→16 kHz became 3→12 kHz.
+  Wet spectral centroid on the piano, as a multiple of the dry piano's:
+  dark 0.66 → 0.73, neutral 1.09 → 0.94, bright 1.61 → 1.43.
+- **Reverb fix this exposed:** the FDN boosts its loop gain so RT60 at
+  1 kHz matches Decay; with dark damping that pushed the low-frequency gain
+  to the clamp (near-infinite lows) and a fast Tone sweep clicked through
+  the limiter (ratio 37, threshold 12). The boost is now capped so lows ring
+  at most 1.5x Decay. RT60 at 1 kHz still within 7% from 1 to 16 s (4%
+  short at 30 s); Tone sweep ratio 5.8; 10-minute stress peak −1.32 dBFS.
+
 ## Decisions made without Shai (easy to revisit)
 
 - **Beads port strategy:** ported envelope, grain, scheduler and freeze tail

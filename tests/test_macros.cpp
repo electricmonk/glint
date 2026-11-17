@@ -160,8 +160,8 @@ TEST_CASE("Macros: mapping matches the plan's table")
     CHECK(lo.grainRateHz == 0.0f);
     CHECK(std::abs(lo.sizeMs - 900.0f) < 1e-2f);
     CHECK(std::abs(lo.randTime - 0.1f) < 1e-5f);
-    CHECK(std::abs(lo.loopHighCutHz - 3000.0f) < 1.0f);
-    CHECK(std::abs(lo.dampingHz - 4000.0f) < 1.0f);
+    CHECK(std::abs(lo.loopHighCutHz - 2000.0f) < 1.0f);
+    CHECK(std::abs(lo.dampingHz - 3000.0f) < 1.0f);
     CHECK(std::abs(lo.width - 0.8f) < 1e-5f);
     CHECK(lo.grainsInLoop == 0.0f);
 
@@ -186,8 +186,8 @@ TEST_CASE("Macros: mapping matches the plan's table")
         CHECK(macros::map(m).reverse == rv);
     }
     m.reverse = 0.0f;
-    CHECK(std::abs(hi.loopHighCutHz - 14000.0f) < 2.0f);
-    CHECK(std::abs(hi.dampingHz - 16000.0f) < 2.0f);
+    CHECK(std::abs(hi.loopHighCutHz - 9000.0f) < 2.0f);
+    CHECK(std::abs(hi.dampingHz - 12000.0f) < 2.0f);
     CHECK(std::abs(hi.width - 1.5f) < 1e-5f);
     CHECK(hi.grainsInLoop == 0.0f); // grains join the loop only in the Bloom zone
 
@@ -221,4 +221,34 @@ TEST_CASE("Macros: the click detector catches real discontinuities (negative con
     const auto rep = analysis::detectClicks(l2, kSr);
     INFO("gain-jump worst ratio " << rep.worstRatio);
     CHECK(rep.clicks >= 1);
+}
+
+TEST_CASE("Macros: Tone centres on the dry signal's brightness")
+{
+    // Piano chords through the fully wet effect at defaults: Tone neutral is
+    // no brighter than the dry piano, and full bright stays within 1.5x.
+    const double sr = 48000.0;
+    const auto dry = signals::piano(sr, 7.0, 0.5);
+    auto centroid = [&](float tone) {
+        GlintEngine e;
+        MacroValues m;
+        m.mix = 1.0f;
+        m.tone = tone;
+        e.setMacros(m);
+        e.prepare(sr, 512);
+        auto l = dry, r = dry;
+        l.resize(static_cast<size_t>(sr * 12.0), 0.0f);
+        r.resize(l.size(), 0.0f);
+        for (size_t pos = 0; pos < l.size(); pos += 512)
+            e.process(l.data() + pos, r.data() + pos, static_cast<int>(std::min<size_t>(512, l.size() - pos)));
+        return analysis::spectralCentroid(l, sr);
+    };
+    const double d = analysis::spectralCentroid(dry, sr);
+    const double dark = centroid(-1.0f), mid = centroid(0.0f), bright = centroid(1.0f);
+    INFO("centroid: dry " << d << " Hz, tone -1 " << dark << ", 0 " << mid << ", +1 " << bright);
+    CHECK(mid < d);
+    CHECK(mid > 0.75 * d);
+    CHECK(bright < 1.5 * d);
+    CHECK(bright > 1.15 * d);
+    CHECK(dark < 0.85 * d);
 }

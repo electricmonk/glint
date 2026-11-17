@@ -74,18 +74,24 @@ void Fdn::updateCoefficients() noexcept
     const float scale = 0.25f + 0.75f * size;
     dampCoeff_ = onePoleCoeff(std::clamp(settings_.dampingHz, 500.0f, 20000.0f), sampleRate_);
 
-    // Damping filter magnitude at 1 kHz: compensate so RT60 at 1 kHz = decay.
+    // Damping filter magnitude at 1 kHz: compensate so RT60 at 1 kHz = decay,
+    // but let the lows (where the damping passes everything) ring at most
+    // kMaxLowDecay x decay. Uncapped, dark damping pushed the low-frequency
+    // loop gain to the 0.9995 clamp: near-infinite lows that pumped the limiter.
+    constexpr double kMaxLowDecay = 1.5;
     const double w = 2.0 * 3.14159265358979 * 1000.0 / sampleRate_;
     const double a = dampCoeff_;
     const double b = 1.0 - a;
-    const double mag1k = a / std::sqrt(1.0 - 2.0 * b * std::cos(w) + b * b);
+    const double magRef = a / std::sqrt(1.0 - 2.0 * b * std::cos(w) + b * b);
 
     const bool infinite = settings_.decayS >= 60.0f;
     const double decay = std::clamp(static_cast<double>(settings_.decayS), 0.1, 60.0);
     double gSum2 = 0.0;
     for (int i = 0; i < kLines; ++i) {
         const double lenSec = baseLen_[static_cast<size_t>(i)] * scale / sampleRate_;
-        double g = infinite ? 0.9995 : std::pow(10.0, -3.0 * lenSec / decay) / mag1k;
+        double g = infinite ? 0.9995
+                            : std::min(std::pow(10.0, -3.0 * lenSec / decay) / magRef,
+                                       std::pow(10.0, -3.0 * lenSec / (decay * kMaxLowDecay)));
         g = std::min(g, 0.9995);
         gain_[static_cast<size_t>(i)] = static_cast<float>(g);
         // Quarter-power normalisation: energy gain (1-g^2)^-1/2 grows with decay
