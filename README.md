@@ -22,7 +22,7 @@ scripts/validate.sh                    # auval + pluginval (strictness 10)
 ```
 
 The build copies `Glint.component` and `Glint.vst3` into `~/Library/Audio/Plug-Ins`.
-In Logic, the AU appears under Audio Units → Glint Audio → Glint.
+In Logic, the AU appears under Audio Units → electricmonk → Glint.
 
 ## Tools
 

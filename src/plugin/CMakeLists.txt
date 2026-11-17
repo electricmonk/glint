@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-set(GLINT_MANUFACTURER_CODE "Shyl" CACHE STRING "4-char AU manufacturer code")
+set(GLINT_MANUFACTURER_CODE "Elmk" CACHE STRING "4-char AU manufacturer code")
 
 juce_add_plugin(Glint
-    COMPANY_NAME "Glint Audio"
+    COMPANY_NAME "electricmonk"
     COMPANY_WEBSITE "https://github.com/electricmonk/glint"
     BUNDLE_ID "io.github.electricmonk.glint"
     PLUGIN_MANUFACTURER_CODE ${GLINT_MANUFACTURER_CODE}

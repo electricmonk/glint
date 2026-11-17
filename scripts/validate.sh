@@ -14,7 +14,7 @@ esac
 [ -d "$ARTEFACTS/$CONFIG" ] && ARTEFACTS="$ARTEFACTS/$CONFIG"
 
 MFR="$(grep -E '^GLINT_MANUFACTURER_CODE' "$ROOT/build/$PRESET/CMakeCache.txt" | cut -d= -f2)"
-MFR="${MFR:-Shyl}"
+MFR="${MFR:-Elmk}"
 
 PLUGINVAL="${PLUGINVAL:-}"
 if [ -z "$PLUGINVAL" ]; then
