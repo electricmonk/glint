@@ -125,6 +125,9 @@ ChipGroup::ChipGroup(juce::RangedAudioParameter& param, const juce::StringArray&
 {
     setTitle(title);
     setFocusContainerType(FocusContainerType::focusContainer);
+    // Only the chips take clicks: the group's own area (heading row) must not
+    // swallow clicks meant for a section switch laid over it.
+    setInterceptsMouseClicks(false, true);
     for (int i = 0; i < names.size(); ++i) {
         auto chip = std::make_unique<Pill>(names[i], Pill::Kind::Chip);
         chip->setClickingTogglesState(false);

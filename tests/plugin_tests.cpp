@@ -305,6 +305,25 @@ TEST_CASE("Editor: reopens with the current state, controls are accessible")
         CHECK(p->state().getRawParameterValue(pid)->load() == 0.0f);
     }
 
+    // Every button receives a mouse click at its centre (no sibling drawn on
+    // top of it swallows the click).
+    int hit = 0;
+    ed->setVisible(true); // getComponentAt only searches visible components
+    std::function<void(juce::Component&)> hitTest = [&](juce::Component& c) {
+        if (auto* b = dynamic_cast<juce::Button*>(&c); b && b->isVisible()) {
+            const auto centre = ed->getLocalPoint(b, b->getLocalBounds().getCentre());
+            auto* under = ed->getComponentAt(centre);
+            INFO("button '" << b->getTitle() << "' at " << centre.toString() << " is covered by '"
+                            << (under ? under->getTitle() + " / " + under->getName() : juce::String("nothing")) << "'");
+            CHECK((under == b || (under != nullptr && b->isParentOf(under))));
+            ++hit;
+        }
+        for (auto* child : c.getChildren())
+            hitTest(*child);
+    };
+    hitTest(*ed);
+    CHECK(hit >= 15);
+
     // Accessible value change goes to the parameter.
     std::function<juce::AccessibilityHandler*(juce::Component&, const juce::String&)> find =
         [&](juce::Component& c, const juce::String& title) -> juce::AccessibilityHandler* {
