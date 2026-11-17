@@ -225,8 +225,10 @@ void GlintEngine::process(float* left, float* right, int numSamples) noexcept
             float vl, vr;
             fdn_.process(rl, rr, vl, vr);
             shimmer_.process(vl, vr, loopL_, loopR_);
-            // Shimmer switch: the loop keeps running (its limiter still rides
-            // the wet level above 100%), but nothing shifted is fed back.
+            // Shimmer switch: bypasses the whole reverb + shimmer block. The
+            // loop keeps running silently (so switching back on is click-free),
+            // nothing shifted is fed back and the reverb leaves the wet signal:
+            // only the grains remain.
             const float sg = shimmerGate_.next();
             loopL_ *= sg;
             loopR_ *= sg;
@@ -237,7 +239,7 @@ void GlintEngine::process(float* left, float* right, int numSamples) noexcept
 
             // The Bloom limiter's gain also rides the audible reverb, so the tail
             // is held near -6 dBFS even while the input keeps feeding it.
-            const float rv = reverbLevel_.next() * makeup;
+            const float rv = reverbLevel_.next() * makeup * sg;
             const float gv = grainsLevel_.next();
             float wetL = vl * rv + grainL_[k] * gv;
             float wetR = vr * rv + grainR_[k] * gv;

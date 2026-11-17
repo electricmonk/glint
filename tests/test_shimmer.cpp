@@ -160,13 +160,14 @@ TEST_CASE("Shimmer: loop gain is below 1 under 100% and continuous through it")
         CHECK(loopGainForFeedback(fb) > loopGainForFeedback(fb - 0.01f));
 }
 
-TEST_CASE("Shimmer: switching the shimmer off leaves a plain reverb")
+TEST_CASE("Shimmer: switching the shimmer off bypasses the reverb")
 {
-    // A 440 Hz tone into Bloom 80%: with the shimmer on, the tail has an
-    // octave above; switched off, the octave is gone (only the reverb's own
-    // 440 Hz remains), and it comes back when switched on again.
+    // 2 s of a 440 Hz tone into Bloom 80% with no grains, then silence. With
+    // the shimmer on there's a long tail with an octave in it; switched off
+    // the wet signal has no reverb at all, so the tail is silent.
     const double sr = 48000.0;
-    auto tail880 = [&](bool on) {
+    struct Tail { double rmsDb, octaveDb; };
+    auto tail = [&](bool on) {
         GlintEngine e;
         MacroValues m;
         m.bloom = 0.8f; m.mix = 1.0f; m.density = 0.0f; m.drift = 0.0f;
@@ -178,13 +179,35 @@ TEST_CASE("Shimmer: switching the shimmer off leaves a plain reverb")
         auto r = l;
         for (size_t pos = 0; pos < l.size(); pos += 512)
             e.process(l.data() + pos, r.data() + pos, static_cast<int>(std::min<size_t>(512, l.size() - pos)));
-        const auto mag = analysis::spectrum(l, static_cast<size_t>(sr * 3.0), l.size());
-        return analysis::toDb(analysis::magnitudeAt(mag, sr, 880.0) / analysis::magnitudeAt(mag, sr, 440.0));
+        const size_t from = static_cast<size_t>(sr * 3.0);
+        const auto mag = analysis::spectrum(l, from, l.size());
+        return Tail { analysis::toDb(analysis::rms(l, from, l.size())),
+                      analysis::toDb(analysis::magnitudeAt(mag, sr, 880.0) / analysis::magnitudeAt(mag, sr, 440.0)) };
     };
-    const double on = tail880(true), off = tail880(false);
-    INFO("880 vs 440 in the tail: shimmer on " << on << " dB, off " << off << " dB");
-    CHECK(on > -12.0);
-    CHECK(off < -40.0);
+    const auto on = tail(true), off = tail(false);
+    INFO("tail 1-4 s after the note: shimmer on " << on.rmsDb << " dBFS (octave " << on.octaveDb
+                                                  << " dB vs 440), off " << off.rmsDb << " dBFS");
+    CHECK(on.rmsDb > -40.0);
+    CHECK(on.octaveDb > -12.0);
+    CHECK(off.rmsDb < -100.0);
+}
+
+TEST_CASE("Shimmer: with the shimmer off the grains still play")
+{
+    // Grains on, shimmer off: the wet signal is the grains alone.
+    const double sr = 48000.0;
+    GlintEngine e;
+    MacroValues m;
+    m.mix = 1.0f; m.density = 0.6f; m.shimmerOn = false;
+    e.setMacros(m);
+    e.prepare(sr, 512);
+    auto l = signals::sine(sr, 3.0, 440.0, 0.25);
+    auto r = l;
+    for (size_t pos = 0; pos < l.size(); pos += 512)
+        e.process(l.data() + pos, r.data() + pos, static_cast<int>(std::min<size_t>(512, l.size() - pos)));
+    const double level = analysis::toDb(analysis::rms(l, static_cast<size_t>(sr * 1.0), l.size()));
+    INFO("wet level with grains only: " << level << " dBFS");
+    CHECK(level > -30.0);
 }
 
 TEST_CASE("Shimmer: 10 minutes of pink noise at Feedback 110% and Decay infinite stays below 0 dBFS", "[slow]")

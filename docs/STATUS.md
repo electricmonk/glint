@@ -46,6 +46,26 @@ unusable; asked for Shimmer/Grains on-off switches and grain direction.
 - CPU at 48 kHz/256: 1.57 % of one core (was 0.80 %); 96 kHz 3.1 %, 192 kHz
   6.5 %.
 
+## Usable ranges, Shimmer bypass, Direction knob (2026-11-17, branch shimmer-v2)
+
+Shai: switch clicks did nothing; Shimmer off should turn the reverb off;
+anything above 60% was almost unusable; Direction should be a knob.
+
+- **Fix:** the chip groups overlapped their heading switches and swallowed
+  the clicks. Chip groups now pass clicks through; the editor test hit-tests
+  the centre of every button.
+- **Shimmer off bypasses the reverb:** a tone's tail 1–4 s after the note is
+  below −100 dBFS with the switch off (on: above −40 dBFS); with grains on,
+  the grains still play.
+- **Ranges:** Bloom, Space and Drift at 100% now reach what 65% did. On the
+  piano phrase at the default knob positions, the tail falls 10 dB in 2.4 s
+  (was 6.2 s) and 20 dB in 4.4 s (was not within 9 s). Everything at 100%
+  (`case-piano-full`): 8.2 s / 14.4 s. Presets keep their knob values, so
+  they're gentler too. Whisper Room's shimmer is back on (it relied on
+  Shimmer off giving a plain reverb).
+- **Direction** is a 0–100% knob (share of grains reversed), state
+  version 3; version-2 states map Forward/Both/Reverse to 0/50/100%.
+
 ## Decisions made without Shai (easy to revisit)
 
 - **Beads port strategy:** ported envelope, grain, scheduler and freeze tail

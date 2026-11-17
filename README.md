@@ -7,7 +7,7 @@ long, diffuse 8-line FDN reverb with a pitch-shifted feedback loop. Above 100%,
 
 Eleven controls: Bloom, Space, Density, Drift, Spread, Stereo density, Tone,
 Shimmer interval, Texture, Mix and Freeze, plus on/off switches for the
-Shimmer and Grains sections and a grain Direction (forward, both, reverse).
+Shimmer (reverb) and Grains sections and a grain Direction knob (forward to reverse).
 20 factory presets.
 
 ## Build

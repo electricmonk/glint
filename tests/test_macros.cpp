@@ -115,7 +115,7 @@ TEST_CASE("Macros: Shimmer and Grains switches and Direction changes are click-f
         m.grainsOn = (static_cast<int>(t / 0.7) % 2) == 0;
     }, 4.0, start), "grains on/off");
     checkNoClicks(render([](MacroValues& m, double t) {
-        m.direction = static_cast<GrainDirection>(static_cast<int>(t / 0.6) % 3);
+        m.reverse = static_cast<float>(static_cast<int>(t / 0.6) % 3) * 0.5f;
     }, 4.0, start), "direction changes");
 }
 
@@ -165,24 +165,39 @@ TEST_CASE("Macros: mapping matches the plan's table")
     CHECK(std::abs(lo.width - 0.8f) < 1e-5f);
     CHECK(lo.grainsInLoop == 0.0f);
 
+    // Bloom, Space and Drift at 100% reach 65% of their underlying curves
+    // (macros::kRangeScale); the rest reach the ends of theirs.
     m.bloom = 1.0f; m.space = 1.0f; m.density = 1.0f; m.drift = 1.0f; m.tone = 1.0f; m.spread = 1.0f;
     auto hi = macros::map(m);
-    CHECK(std::abs(hi.reverbSize - 1.0f) < 1e-5f);
-    CHECK(std::abs(hi.preDelayMs - 80.0f) < 1e-3f);
+    CHECK(std::abs(hi.feedback - 0.65f) < 1e-5f);
+    CHECK(std::abs(hi.reverbSize - (0.3f + 0.7f * 0.65f)) < 1e-5f);
+    CHECK(std::abs(hi.preDelayMs - (10.0f + 70.0f * 0.65f)) < 1e-3f);
+    // Longest tail below the Bloom zone: ~10.5 s from Space, x1.6 from Bloom.
+    INFO("decay at Bloom 100 / Space 100: " << hi.decayS << " s");
+    CHECK(hi.decayS > 15.0f);
+    CHECK(hi.decayS < 18.0f);
     CHECK(std::abs(hi.grainRateHz - 40.0f) < 1e-3f);
     CHECK(std::abs(hi.sizeMs - 150.0f) < 1e-2f);
-    CHECK(std::abs(hi.randTime - 0.7f) < 1e-5f);
-    CHECK(std::abs(hi.pitchJitterSt - 0.3f) < 1e-5f);
-    CHECK(hi.reverse == 0.0f); // Drift no longer reverses grains; Direction does
-    m.direction = GrainDirection::Both;
-    CHECK(macros::map(m).reverse == 0.5f);
-    m.direction = GrainDirection::Reverse;
-    CHECK(macros::map(m).reverse == 1.0f);
-    m.direction = GrainDirection::Forward;
+    CHECK(std::abs(hi.randTime - (0.1f + 0.6f * 0.65f)) < 1e-5f);
+    CHECK(std::abs(hi.pitchJitterSt - 0.3f * 0.65f) < 1e-5f);
+    CHECK(hi.reverse == 0.0f); // Drift doesn't reverse grains; Direction does
+    for (float rv : { 0.0f, 0.3f, 0.5f, 1.0f }) {
+        m.reverse = rv;
+        CHECK(macros::map(m).reverse == rv);
+    }
+    m.reverse = 0.0f;
     CHECK(std::abs(hi.loopHighCutHz - 14000.0f) < 2.0f);
     CHECK(std::abs(hi.dampingHz - 16000.0f) < 2.0f);
     CHECK(std::abs(hi.width - 1.5f) < 1e-5f);
-    CHECK(hi.grainsInLoop > 0.0f);
+    CHECK(hi.grainsInLoop == 0.0f); // grains join the loop only in the Bloom zone
+
+    // Bloom zone: 100 -> 110% runs the rest of the way to infinite hold, continuously.
+    m.bloom = 1.05f;
+    const auto mid = macros::map(m);
+    CHECK(mid.feedback > 0.65f);
+    CHECK(mid.feedback < 1.1f);
+    CHECK(mid.grainsInLoop > 0.0f);
+    CHECK(std::abs(macros::bloomDepth(1.0f) - macros::bloomDepth(1.0001f)) < 0.01f);
 
     m.bloom = 1.1f;
     auto bloom = macros::map(m);

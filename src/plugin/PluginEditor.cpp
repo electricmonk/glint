@@ -50,12 +50,11 @@ public:
         , grainsOn(*param(params::id::grainsOn), "Grains", ui::colour::ice)
         , shimmer(*param(params::id::shimmer), params::shimmerNames(), "Shimmer", false)
         , texture(*param(params::id::texture), params::textureNames(), "Texture", false)
-        , direction(*param(params::id::direction), params::directionNames(), "Direction", false)
+        , direction(*param(params::id::direction), "Direction", ui::colour::ice, sm())
         , tone(*param(params::id::tone), "Tone", ui::colour::soft, sm(), true)
         , mix(*param(params::id::mix), "Mix", ui::colour::soft, sm())
     {
         stereo.setTitle("Stereo density");
-        direction.setIcons({ &ui::drawArrowRight, &ui::drawArrowBoth, &ui::drawArrowLeft });
         for (juce::Component* c : std::initializer_list<juce::Component*> {
                  &cloud, &presetPill, &freeze, &density, &drift, &bloom, &space, &spread, &stereo, &shimmerOn, &shimmer,
                  &grainsOn, &texture, &direction, &tone, &mix })
@@ -113,10 +112,11 @@ public:
         shimmer.setBounds(24, 490, shimmer.preferredWidth(), 46);
         shimmerOn.setBounds(shimmer.getX() - 1, 488, shimmerOn.preferredWidth(), 18);
         texture.setBounds(shimmer.getRight() + 20, 490, texture.preferredWidth(), 46);
-        direction.setBounds(texture.getRight() + 10, 490, direction.preferredWidth(), 46);
         grainsOn.setBounds(texture.getX() - 1, 488, grainsOn.preferredWidth(), 18);
         mix.setBounds(796 - 104, 492, 104, 44);
         tone.setBounds(mix.getX() - 12 - 104, 492, 104, 44);
+        // Direction fills the gap between the Texture chips and Tone.
+        direction.setBounds(texture.getRight() + 14, 492, tone.getX() - 8 - (texture.getRight() + 14), 44);
     }
 
     void refresh()
@@ -131,8 +131,9 @@ public:
         // Switched-off sections dim their controls (still clickable).
         const float shimmerAlpha = get(params::id::shimmerOn) >= 0.5f ? 1.0f : 0.4f;
         const float grainsAlpha = get(params::id::grainsOn) >= 0.5f ? 1.0f : 0.4f;
-        if (shimmer.getAlpha() != shimmerAlpha)
-            shimmer.setAlpha(shimmerAlpha);
+        if (shimmer.getAlpha() != shimmerAlpha) // the reverb + shimmer controls
+            for (juce::Component* c : std::initializer_list<juce::Component*> { &shimmer, &bloom, &space })
+                c->setAlpha(shimmerAlpha);
         if (texture.getAlpha() != grainsAlpha) {
             texture.setAlpha(grainsAlpha);
             direction.setAlpha(grainsAlpha);
@@ -149,8 +150,8 @@ public:
     ui::FreezeButton freeze;
     ui::Knob density, drift, bloom, space, spread, stereo;
     ui::GroupToggle shimmerOn, grainsOn;
-    ui::ChipGroup shimmer, texture, direction;
-    ui::Knob tone, mix;
+    ui::ChipGroup shimmer, texture;
+    ui::Knob direction, tone, mix;
     int lastProgram = -1;
 };
 

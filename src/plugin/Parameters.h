@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Host parameters: the 11 macros plus the Shimmer/Grains switches and grain
-// Direction (added in state version 2). IDs are frozen once they ship; bump
-// kStateVersion instead of renaming.
+// Direction (added in state version 2; Direction became a 0..100% reverse
+// share in version 3). IDs are frozen once they ship; bump kStateVersion
+// instead of renaming.
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -10,7 +11,7 @@
 
 namespace glint::params {
 
-constexpr int kStateVersion = 2;
+constexpr int kStateVersion = 3;
 constexpr int kParamVersionHint = 1;
 
 namespace id {
@@ -42,12 +43,6 @@ inline const juce::StringArray& shimmerNames()
 inline const juce::StringArray& textureNames()
 {
     static const juce::StringArray names { "Clean", "Tape", "Dust" };
-    return names;
-}
-
-inline const juce::StringArray& directionNames()
-{
-    static const juce::StringArray names { "Forward", "Both", "Reverse" };
     return names;
 }
 

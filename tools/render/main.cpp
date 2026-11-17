@@ -47,13 +47,13 @@ bool applyMacro(MacroValues& m, const std::string& k, const json::Value& v)
     else if (k == "freeze") m.freeze = x != 0.0;
     else if (k == "shimmerOn") m.shimmerOn = x != 0.0;
     else if (k == "grainsOn") m.grainsOn = x != 0.0;
-    else if (k == "direction") {
+    else if (k == "direction") { // share of grains reversed, 0..1 (or forward/both/reverse)
         if (v.isString()) {
-            if (v.str == "forward") m.direction = GrainDirection::Forward;
-            else if (v.str == "both") m.direction = GrainDirection::Both;
-            else if (v.str == "reverse") m.direction = GrainDirection::Reverse;
+            if (v.str == "forward") m.reverse = 0.0f;
+            else if (v.str == "both") m.reverse = 0.5f;
+            else if (v.str == "reverse") m.reverse = 1.0f;
             else return false;
-        } else m.direction = static_cast<GrainDirection>(static_cast<int>(x));
+        } else m.reverse = static_cast<float>(x);
     }
     else if (k == "shimmer") {
         if (v.isString()) {
@@ -148,7 +148,7 @@ int run(const Case& c, const std::string& outPath, bool bench)
         macros.tone = p.tone * 0.01f; macros.mix = p.mix * 0.01f;
         macros.shimmer = static_cast<ShimmerInterval>(p.shimmer);
         macros.texture = p.texture == 1 ? Texture::Tape : (p.texture == 2 ? Texture::Dust : Texture::Clean);
-        macros.direction = static_cast<GrainDirection>(p.direction);
+        macros.reverse = p.direction * 0.01f;
         macros.shimmerOn = p.shimmerOn;
         macros.grainsOn = p.grainsOn;
     }

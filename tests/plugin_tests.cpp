@@ -237,12 +237,34 @@ TEST_CASE("Plugin: version-1 state loads with the switches on and Direction forw
     auto b = makeProcessor();
     setPlain(*b, params::id::shimmerOn, 0.0f);
     setPlain(*b, params::id::grainsOn, 0.0f);
-    setPlain(*b, params::id::direction, 2.0f);
+    setPlain(*b, params::id::direction, 100.0f);
     b->setStateInformation(v1.getData(), static_cast<int>(v1.getSize()));
     CHECK(b->state().getRawParameterValue(params::id::bloom)->load() == 77.0f);
     CHECK(b->state().getRawParameterValue(params::id::shimmerOn)->load() == 1.0f);
     CHECK(b->state().getRawParameterValue(params::id::grainsOn)->load() == 1.0f);
     CHECK(b->state().getRawParameterValue(params::id::direction)->load() == 0.0f);
+}
+
+TEST_CASE("Plugin: version-2 state maps the Direction choice to a reverse percentage")
+{
+    // Version 2 stored Direction as 0 Forward / 1 Both / 2 Reverse.
+    for (auto [choice, percent] : { std::pair { 0.0, 0.0f }, std::pair { 1.0, 50.0f }, std::pair { 2.0, 100.0f } }) {
+        auto a = makeProcessor();
+        juce::MemoryBlock mb;
+        a->getStateInformation(mb);
+        auto xml = juce::AudioProcessor::getXmlFromBinary(mb.getData(), static_cast<int>(mb.getSize()));
+        REQUIRE(xml != nullptr);
+        xml->setAttribute("stateVersion", 2);
+        auto* dir = xml->getChildByAttribute("id", params::id::direction);
+        REQUIRE(dir != nullptr);
+        dir->setAttribute("value", choice);
+        juce::MemoryBlock v2;
+        juce::AudioProcessor::copyXmlToBinary(*xml, v2);
+        auto b = makeProcessor();
+        b->setStateInformation(v2.getData(), static_cast<int>(v2.getSize()));
+        INFO("choice " << choice);
+        CHECK(b->state().getRawParameterValue(params::id::direction)->load() == percent);
+    }
 }
 
 TEST_CASE("Editor: reopens with the current state, controls are accessible")
@@ -271,7 +293,9 @@ TEST_CASE("Editor: reopens with the current state, controls are accessible")
                 if (h->getTitle() == "Bloom")
                     CHECK(h->getValueInterface()->getCurrentValueAsString() == "bloom 104%");
                 if (h->getTitle() == "Space")
-                    CHECK(h->getValueInterface()->getCurrentValueAsString() == "2.7 s tail");
+                    CHECK(h->getValueInterface()->getCurrentValueAsString() == "2.2 s tail"); // Space 20%
+                if (h->getTitle() == "Direction")
+                    CHECK(h->getValueInterface()->getCurrentValueAsString() == "forward");
                 if (h->getTitle() == "Tone")
                     CHECK(h->getValueInterface()->getCurrentValueAsString() == "dark 30");
             }
@@ -284,8 +308,8 @@ TEST_CASE("Editor: reopens with the current state, controls are accessible")
             walk(*child);
     };
     walk(*ed);
-    CHECK(sliders == 8);           // 6 row knobs + Tone + Mix
-    CHECK(buttons >= 2 + 1 + 4 + 3 + 3 + 2); // preset arrows, freeze, chips, direction, switches
+    CHECK(sliders == 9);           // 6 row knobs + Direction + Tone + Mix
+    CHECK(buttons >= 2 + 1 + 4 + 3 + 2); // preset arrows, freeze, chips, switches
 
     // The section switches are reachable by name and toggle their parameter.
     std::function<juce::Button*(juce::Component&, const juce::String&)> findButton =
@@ -322,7 +346,7 @@ TEST_CASE("Editor: reopens with the current state, controls are accessible")
             hitTest(*child);
     };
     hitTest(*ed);
-    CHECK(hit >= 15);
+    CHECK(hit >= 12);
 
     // Accessible value change goes to the parameter.
     std::function<juce::AccessibilityHandler*(juce::Component&, const juce::String&)> find =
@@ -377,4 +401,18 @@ TEST_CASE("Editor: snapshots at 100% and 150%", "[snapshot]")
 int main(int argc, char* argv[])
 {
     return Catch::Session().run(argc, argv);
+}
+
+TEST_CASE("Plugin: Direction reads as a reverse percentage and accepts words")
+{
+    auto p = makeProcessor();
+    auto* d = p->state().getParameter(params::id::direction);
+    REQUIRE(d != nullptr);
+    struct Case { float plain; const char* text; };
+    for (auto c : { Case { 0.0f, "forward" }, Case { 30.0f, "30% reverse" }, Case { 50.0f, "50/50" },
+                    Case { 100.0f, "reverse" } })
+        CHECK(d->getText(d->convertTo0to1(c.plain), 32) == c.text);
+    CHECK(d->convertFrom0to1(d->getValueForText("reverse")) == 100.0f);
+    CHECK(d->convertFrom0to1(d->getValueForText("forward")) == 0.0f);
+    CHECK(d->convertFrom0to1(d->getValueForText("25")) == 25.0f);
 }

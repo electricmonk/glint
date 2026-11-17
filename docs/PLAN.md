@@ -182,10 +182,15 @@ changes, bypass, and mono-in.
 IDs are stable strings, such as `macro.bloom`. They never change after
 release.
 
+Bloom, Space and Drift are scaled (`macros::kRangeScale` = 0.65): the knob's
+0–100% covers 0–65% of the curves below, because the top of the original
+curves was too much to use. Bloom's 100–110% zone then runs on through the
+rest of its curve to infinite hold.
+
 | Macro | Range | Default | Drives (engine parameters) |
 | --- | --- | --- | --- |
 | Bloom | 0–110% | 60% | Feedback (loop gain 1 − 30^−(b^1.4): 0.47 at 30%, 0.72 at 50%, 0.88 at 70%); Shimmer blend 40→90%; Decay ×1→×2; from 70% up, crossfades Serial → Grains-in-loop; above 100% = Bloom (limiter holds level) |
-| Space | 0–100% | 65% | Reverb Size 30→100%; Decay 1.5→30 s (log); Diffusion 60→95%; Pre-delay 10→80 ms |
+| Space | 0–100% | 65% | Reverb Size 30→100%; Decay 1.5→30 s (log; 1.5→10.5 s over the knob); Diffusion 60→95%; Pre-delay 10→80 ms |
 | Density | 0–100% | 45% | Random grain rate 0→about 40/s; grain Size 900→150 ms as density rises, so overlap stays even; Shape fixed smooth |
 | Drift | 0–100% | 35% | Random time 10→70%; pitch jitter 0→±0.3 st; reverb Mod depth 15→70% |
 | Spread | 0–100% | 70% | Grain pan width; reverb Width 80→150% |
@@ -195,12 +200,13 @@ release.
 | Texture | Clean / Tape / Dust | Clean | Colour mode |
 | Mix | 0–100% | 35% | Dry/wet, constant-power |
 | Freeze | on/off | off | Grain buffer recording |
-| Shimmer on (`macro.shimmerOn`) | on/off | on | Off: the pitch-shifted loop fades out (40 ms); a plain reverb. Bloom still sets decay |
+| Shimmer on (`macro.shimmerOn`) | on/off | on | Off: the whole reverb + shimmer block fades out of the wet signal (40 ms); only the grains remain |
 | Grains on (`macro.grainsOn`) | on/off | on | Off: no new grains, grain output fades out (40 ms), all input goes straight to the reverb. The buffer keeps recording |
-| Direction (`macro.direction`) | Forward / Both / Reverse | Forward | Reverse probability 0 / 50 / 100% |
+| Direction (`macro.direction`) | 0–100% | 0% (forward) | Share of grains played backwards: 0 forward, 50 half and half, 100 reverse |
 
-The three switches arrived with state version 2; a version-1 state loads
-them at their defaults.
+The switches and Direction arrived with state version 2; a version-1 state
+loads them at their defaults. Version 3 made Direction a percentage; a
+version-2 state's choice (0/1/2) loads as 0/50/100%.
 
 Fixed, with no control: grain Pitch 0, Grain feedback 0, no tempo sync,
 Output gain 0 dB. All curves live in `src/dsp/Macros.h`.

@@ -10,7 +10,6 @@
 namespace glint {
 
 enum class ShimmerInterval { Octave = 0, Fifth = 1, OctFifth = 2, SubOct = 3 };
-enum class GrainDirection { Forward = 0, Both = 1, Reverse = 2 };
 
 // The host-visible controls (11 macros + 3 switches). Continuous ones are smoothed by GlintEngine
 // before map() runs; percentages are 0..1 (Bloom 0..1.1, bipolar -1..1).
@@ -28,7 +27,7 @@ struct MacroValues {
     bool freeze = false;
     bool shimmerOn = true;
     bool grainsOn = true;
-    GrainDirection direction = GrainDirection::Forward;
+    float reverse = 0.0f; // Direction: share of grains played backwards, 0..1
 };
 
 namespace macros {
@@ -49,23 +48,38 @@ constexpr float kModRateHz = 0.4f;
 constexpr float kGrainsLevelDb = -3.0f;   // grains heard directly in the wet signal
 constexpr float kMaxGrainRateHz = 40.0f;
 
+// Range of Bloom, Space and Drift: the full knob covers what 0..65% of the
+// original curves did (above that the tail and wobble were too much to use).
+// Bloom's 100..110% zone still runs on to infinite hold.
+constexpr float kRangeScale = 0.65f;
+inline float bloomDepth(float knob) noexcept
+{
+    const float b = std::clamp(knob, 0.0f, 1.1f);
+    return b <= 1.0f ? b * kRangeScale : kRangeScale + (b - 1.0f) / 0.1f * (1.1f - kRangeScale);
+}
+inline float spaceDepth(float knob) noexcept { return std::clamp(knob, 0.0f, 1.0f) * kRangeScale; }
+inline float driftDepth(float knob) noexcept { return std::clamp(knob, 0.0f, 1.0f) * kRangeScale; }
+// Reverb decay for a Space setting before Bloom's stretch (also the UI text).
+inline float spaceDecayS(float knob) noexcept { return 1.5f * std::pow(20.0f, spaceDepth(knob)); }
+
 inline EngineParams map(const MacroValues& m) noexcept
 {
     EngineParams p;
 
-    // Bloom: Feedback (perceptual curve lives in ShimmerLoop), shimmer blend
+    // Bloom (scaled by bloomDepth): Feedback (perceptual curve lives in ShimmerLoop), shimmer blend
     // 40->90%, Decay x1->x2, Serial -> Grains-in-loop from 70% up.
-    const float b = std::clamp(m.bloom, 0.0f, 1.1f);
+    const float b = bloomDepth(m.bloom);
     p.feedback = b;
     p.shimmerBlend = lerp(0.4f, 0.9f, b / 1.1f);
     const float decayMul = 1.0f + b / 1.1f;
     p.routing = Routing::GrainsInLoop;
     p.grainsInLoop = smoothstep(0.7f, 1.0f, b) * 0.5f;
 
-    // Space: size 30->100%, decay 1.5->30 s (log), diffusion 60->95%, pre-delay 10->80 ms.
-    const float s = std::clamp(m.space, 0.0f, 1.0f);
+    // Space (scaled by spaceDepth; curves below are over 0..1 of depth): size 30->100%,
+    // decay 1.5->30 s (log; 1.5->10.5 s over the knob), diffusion 60->95%, pre-delay 10->80 ms.
+    const float s = spaceDepth(m.space);
     p.reverbSize = lerp(0.3f, 1.0f, s);
-    p.decayS = std::min(expLerp(1.5f, 30.0f, s) * decayMul, 59.0f);
+    p.decayS = std::min(spaceDecayS(m.space) * decayMul, 59.0f);
     if (b > 1.0f) // Bloom: decay glides to infinite at 110%; the limiter holds the level.
         p.decayS = expLerp(p.decayS, EngineParams::kInfiniteDecay, std::min(1.0f, (b - 1.0f) / 0.1f));
     p.diffusion = lerp(0.6f, 0.95f, s);
@@ -81,8 +95,8 @@ inline EngineParams map(const MacroValues& m) noexcept
     // With no grains the input still has to reach the reverb.
     p.directToReverb = lerp(1.0f, 0.35f, smoothstep(0.0f, 0.5f, d));
 
-    // Drift: random time 10->70%, pitch jitter 0->0.3 st, mod depth 15->70%.
-    const float r = std::clamp(m.drift, 0.0f, 1.0f);
+    // Drift (scaled by driftDepth): random time 10->70%, pitch jitter 0->0.3 st, mod depth 15->70%.
+    const float r = driftDepth(m.drift);
     p.randTime = lerp(0.1f, 0.7f, r);
     p.pitchJitterSt = 0.3f * r;
     p.modDepth = lerp(0.15f, 0.7f, r);
@@ -107,12 +121,8 @@ inline EngineParams map(const MacroValues& m) noexcept
     case ShimmerInterval::SubOct: p.shiftA = -12.0f; p.shiftB = 12.0f; p.shiftBLevel = 0.8f; break;
     }
 
-    // Direction: share of grains played backwards.
-    switch (m.direction) {
-    case GrainDirection::Forward: p.reverse = 0.0f; break;
-    case GrainDirection::Both: p.reverse = 0.5f; break;
-    case GrainDirection::Reverse: p.reverse = 1.0f; break;
-    }
+    // Direction: share of grains played backwards (0 forward .. 1 reverse).
+    p.reverse = std::clamp(m.reverse, 0.0f, 1.0f);
     p.shimmerOn = m.shimmerOn;
     p.grainsOn = m.grainsOn;
 

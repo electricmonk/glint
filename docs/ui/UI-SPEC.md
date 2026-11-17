@@ -32,10 +32,11 @@ value formatting and the five presets, then rebuild the UI in JUCE.
    Stereo density (smaller). Each knob shows a label, then a value underneath.
 4. **Footer:** a SHIMMER section (interval chips: Octave · Fifth ·
    Oct + 5th · Sub + Oct), a GRAINS section (Texture chips Clean · Tape ·
-   Dust, then Direction chips drawn as arrows: forward · both · reverse),
-   then small Tone and Mix knobs. Each section heading is its on/off switch:
-   a dot (gold for Shimmer, ice for Grains) filled when on. A switched-off
-   section's chips dim to 40% but stay clickable.
+   Dust, then a small ice Direction knob: "forward" · "30% reverse" ·
+   "50/50" · "reverse"), then small Tone and Mix knobs. Each section heading
+   is its on/off switch: a dot (gold for Shimmer, ice for Grains) filled when
+   on. A switched-off section's controls dim to 40% but stay usable; Shimmer
+   off also dims Bloom and Space, which only drive the reverb.
 
 ## Knob behaviour
 

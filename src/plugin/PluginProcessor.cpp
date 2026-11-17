@@ -133,7 +133,7 @@ void GlintAudioProcessor::setCurrentProgram(int index)
     set(params::id::mix, p.mix);
     set(params::id::shimmer, static_cast<float>(p.shimmer));
     set(params::id::texture, static_cast<float>(p.texture));
-    set(params::id::direction, static_cast<float>(p.direction));
+    set(params::id::direction, p.direction);
     set(params::id::shimmerOn, p.shimmerOn ? 1.0f : 0.0f);
     set(params::id::grainsOn, p.grainsOn ? 1.0f : 0.0f);
 }
@@ -161,6 +161,13 @@ void GlintAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
         for (const char* pid : { params::id::shimmerOn, params::id::grainsOn, params::id::direction })
             if (auto* prm = apvts_.getParameter(pid))
                 prm->setValueNotifyingHost(prm->getDefaultValue());
+    }
+    if (version == 2) {
+        // Version 2 stored Direction as a choice index (0 Forward, 1 Both,
+        // 2 Reverse); it is now the percent of grains reversed.
+        for (auto child : tree)
+            if (child.getProperty("id").toString() == params::id::direction)
+                child.setProperty("value", juce::jlimit(0.0, 100.0, static_cast<double>(child.getProperty("value", 0.0)) * 50.0), nullptr);
     }
     currentProgram_.store(juce::jlimit(0, getNumPrograms() - 1, static_cast<int>(tree.getProperty("program", 0))));
     tree.removeProperty("stateVersion", nullptr);
