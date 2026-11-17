@@ -13,7 +13,7 @@ below are still needed from Shai.
 | 4 Integration | Done | phase-4-6-plugin | All 8 continuous macros swept (1 s and 0.1 s) + Shimmer/Texture/Freeze switching: 0 clicks (worst LPC-residual ratio 4.4 vs threshold 12; injected −26 dB step and −6 dB jump are caught, ratio ~59); combined Bloom 0→110→0 sweep 0 clicks, peak < 0 dBFS; state round-trips byte-exact; bypass in/out 0 clicks; 44.1–192 kHz × blocks 1–4096 + random sizes, mono-in: finite |
 | 5 UI | Done | phase-4-6-plugin | Custom UI per UI-SPEC, 75/100/125/150 % steps; editor reopens with state; 8 sliders + 10 buttons with accessible names/values; text contrast ≥ 6.2:1 |
 | 6 Presets/polish | Done | phase-4-6-plugin | 20 presets (5 from mockup + 15), all render finite, peaks −1.8 to −4.3 dBFS on a plucked phrase; CPU at 48 kHz/256: 0.81 % of one M4 Pro core (default), 0.85 % max density, 0.89 % Bloom 110 %; 96 kHz 1.6 %, 192 kHz 3.2 % |
-| 7 Distribution | Blocked on Shai | — | Unsigned .pkg builds (`scripts/sign-notarize.sh`); needs a Developer ID Application + Installer certificate and a notarytool profile (only an Apple Development identity is installed) |
+| 7 Distribution | Done (0.1.0, from 3b0d2a0) | shimmer-v2 | `Glint-0.1.0.pkg` signed (Developer ID Application + Installer, team J257577DJK), notarized (submission fe5a497e, Accepted, no issues) and stapled; `spctl`: accepted, Notarized Developer ID. Before a public release: final AU manufacturer code (placeholder `Shyl`) and company name |
 
 ## Shimmer v2, switches and Direction (2026-11-15, branch shimmer-v2)
 
